@@ -1,0 +1,14 @@
+opam-version: "1.2"
+name: "ipl_ast"
+version: "1.0"
+synopsis: "Imandra Protocol Language ml AST"
+maintainer: "Ewen Maclean <ewen@aestheticintegration.com>"
+authors: "Ewen Maclean <ewen@aestheticintegration.com>"
+homepage: "https://github.com/AestheticIntegration/ipl_ast"
+bug-reports: "https://github.com/AestheticIntegration/ipl_ast/issues"
+license: "APACHE-2.0"
+doc: "https://github.com/AestheticIntegration/ipl_ast"
+build: [["dune" "build" "-p" name "-j" jobs]]
+depends: [
+  "containers"
+]

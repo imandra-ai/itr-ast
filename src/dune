@@ -1,0 +1,6 @@
+(library
+ (name itr_ast)
+ (public_name itr-ast)
+ (wrapped false)
+ (flags :standard -warn-error -A+8+39 -w -33-58)
+ (libraries containers decoders decoders-yojson yojson zarith))
