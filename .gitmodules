@@ -1,0 +1,3 @@
+[submodule "vendor/imandra-ptime"]
+	path = vendor/imandra-ptime
+	url = git@github.com:imandra-ai/imandra-ptime.git
