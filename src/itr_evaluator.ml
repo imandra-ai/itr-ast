@@ -541,7 +541,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       Rec_value
         (Value
            (Literal
-              (Datetime (UTCTimestamp (Datetime.get_current_utctimestamp_micro ())))))
+              (Datetime (UTCTimestamp (Current_time.get_current_utctimestamp_micro ())))))
   | Value (Funcall { func : string; args : record_item list })
     when func = "timestamp_to_dateonly" && List.length args = 1 -> (
       match args with

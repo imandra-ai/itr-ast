@@ -577,5 +577,3 @@ let make_utctimestamp_milli_utctimeonly_micro_utcdateonly
   let _d, ps = to_ |> T.to_span |> T.Span.to_d_ps in
   T.unsafe_of_d_ps (d, ps)
 
-  let get_current_utctimestamp_micro () : fix_utctimestamp_micro =
-    Ptime_clock.now () |> T.of_ptime |> to_micros
