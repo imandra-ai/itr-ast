@@ -1,6 +1,6 @@
 open Itr_ast
 
-let retrieve_current_vars (expr : expr) : (string * int option) list list =
+let retrieve_current_vars (expr : expr) : (string * Z.t option) list list =
   get_vars expr
   |> List.filter_map (function
        | Value (MessageValue { var = None; field_path }) -> Some field_path
@@ -8,7 +8,7 @@ let retrieve_current_vars (expr : expr) : (string * int option) list list =
 
 type 'a msg_or_expr = Msg of ('a * string) | Record_item of record_item
 type field_presence = Present | NotPresent | Unknown
-type field_path = (string * int option) list
+type field_path = (string * Z.t option) list
 
 module Field_path_map = CCMap.Make (struct
   type t = field_path
@@ -19,7 +19,7 @@ end)
 type 'a static_context = {
   local_vars : 'a msg_or_expr String_map.t;
   implicit_message : ('a * string) option;
-  get_field : 'a -> (string * int option) list -> record_item;
+  get_field : 'a -> (string * Z.t option) list -> record_item;
 }
 
 type field_presence_map = field_presence Field_path_map.t

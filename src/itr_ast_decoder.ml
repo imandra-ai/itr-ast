@@ -1,11 +1,11 @@
 module I = Itr_ast
 module D = Decoders_yojson.Basic.Decode
 
-let name_and_index_decoder : (string * int option) D.decoder =
+let name_and_index_decoder : (string * Z.t option) D.decoder =
   let open D in
   let* name = field "name" string in
-  let* index = field "index" (nullable int) in
-  succeed (name, index)
+  let* index = field "index" (nullable string) in
+  succeed (name, CCOption.map Z.of_string index)
 
 let message_value_decoder : I.Message_value.t D.decoder =
   let open D in

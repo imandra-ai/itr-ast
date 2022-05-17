@@ -13,7 +13,7 @@ end
 module String_map = Map_extra (CCMap.Make (CCString))
 
 module Field_path_set = CCSet.Make (struct
-  type t = (string * int option) list
+  type t = (string * Z.t option) list
 
   let compare = compare
 end)
@@ -21,7 +21,7 @@ end)
 let pp_string fmt s = CCFormat.(fprintf fmt "%S" s)
 
 module Message_value = struct
-  type t = { var : string option; field_path : (string * int option) list }
+  type t = { var : string option; field_path : (string * Z.t option) list }
 
   let mk ~var field_path = { var; field_path }
 
@@ -37,7 +37,7 @@ module Message_value = struct
                `Assoc
                  [
                    ("name", `String x);
-                   ("index", match o with None -> `Null | Some x -> `Int x);
+                   ("index", match o with None -> `Null | Some x -> `String (Z.to_string x));
                  ])
              t.field_path) )
     in
@@ -48,7 +48,7 @@ module Message_value = struct
     let open CCFormat in
     let index_pp fmt = function
       | s, None -> fprintf fmt "%s" s
-      | s, Some index -> fprintf fmt "%s[%i]" s index
+      | s, Some index -> fprintf fmt "%s[%s]" s (Z.to_string index)
     in
     let pp_var_opt fmt = function
       | None -> ()
@@ -449,7 +449,7 @@ and flatten_record_item ?(qualify_records = true) field (i : record_item) =
 
 type expecting = {
   relevant_exprs : expr list;
-  nullable_exprs : (expr * (string * int option) list list list) list;
+  nullable_exprs : (expr * (string * Z.t option) list list list) list;
   qe_modified_exprs : expr list;
   common_exprs : expr list;
 }
