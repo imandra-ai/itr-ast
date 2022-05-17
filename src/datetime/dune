@@ -3,4 +3,11 @@
  (public_name itr-ast.fix_datetime)
  (wrapped false)
  (flags :standard -warn-error -A+8+39 -w -33-58)
- (libraries imandra-ptime imandra-ptime.extra imandra-prelude))
+ (libraries
+  imandra-ptime
+  imandra-ptime.extra
+  imandra-prelude
+  yojson
+  decoders-yojson
+  decoders
+  ptime.clock.os))
