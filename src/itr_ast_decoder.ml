@@ -117,9 +117,9 @@ and value_decoder () : I.value D.decoder =
                    I.Rec_value e );
                ])
         in
-        let* index = field "index" (nullable int) in
+        let* index = field "index" (nullable string) in
         let* prop = field "prop" string in
-        succeed (I.ObjectProperty { obj; index; prop })
+        succeed (I.ObjectProperty { obj; index = CCOption.map Z.of_string index; prop })
     | "Funcall" ->
         let* func = field "name" string in
         let* args =

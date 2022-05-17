@@ -53,9 +53,9 @@ and value_pp (ppf : formatter) : value -> unit = function
         CCFormat.(list ~sep:(return ",") record_item_pp)
         constraints
 
-and opt_index_pp (ppf : formatter) : int option -> unit = function
+and opt_index_pp (ppf : formatter) : Z.t option -> unit = function
   | None -> ()
-  | Some i -> fprintf ppf "[%i]" i
+  | Some i -> fprintf ppf "[%s]" (Z.to_string i)
 
 and expr_pp (ppf : formatter) : expr -> unit = function
   | Value v -> fprintf ppf "%a" value_pp v

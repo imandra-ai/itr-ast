@@ -97,9 +97,9 @@ and value_to_json : value -> t = function
               ] );
         ]
 
-and opt_index_to_json : int option -> t = function
+and opt_index_to_json : Z.t option -> t = function
   | None -> `Null
-  | Some i -> `Int i
+  | Some i -> `String (Z.to_string i)
 
 and expr_to_json : expr -> t = function
   | Value v -> `Assoc [ ("Value", value_to_json v) ]

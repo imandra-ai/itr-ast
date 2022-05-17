@@ -82,7 +82,7 @@ and value =
   | Literal of literal
   | Variable of string
   | MessageValue of Message_value.t
-  | ObjectProperty of { obj : record_item; index : int option; prop : string }
+  | ObjectProperty of { obj : record_item; index : Z.t option; prop : string }
   | Funcall of { func : string; args : record_item list }
   | CaseSplit of {
       default_value : record_item;
