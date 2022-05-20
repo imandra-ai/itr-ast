@@ -139,10 +139,12 @@ let check_cmp lhs rhs op =
           if l < Q.of_bigint r then e_true else e_false
       | ( Value (Literal (Datetime (UTCTimestamp l))),
           Value (Literal (Datetime (UTCTimestamp r))) ) ->
-          if Datetime.utctimestamp_LessThan_micro_micro l r then e_true else e_false
+          if Datetime.utctimestamp_LessThan_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCTimeOnly l))),
           Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-          if Datetime.utctimeonly_LessThan_micro_micro l r then e_true else e_false
+          if Datetime.utctimeonly_LessThan_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCDateOnly l))),
           Value (Literal (Datetime (UTCDateOnly r))) ) ->
           if Datetime.utcdateonly_LessThan l r then e_true else e_false
@@ -165,10 +167,12 @@ let check_cmp lhs rhs op =
           if l > Q.of_bigint r then e_true else e_false
       | ( Value (Literal (Datetime (UTCTimestamp l))),
           Value (Literal (Datetime (UTCTimestamp r))) ) ->
-          if Datetime.utctimestamp_GreaterThan_micro_micro l r then e_true else e_false
+          if Datetime.utctimestamp_GreaterThan_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCTimeOnly l))),
           Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-          if Datetime.utctimeonly_GreaterThan_micro_micro l r then e_true else e_false
+          if Datetime.utctimeonly_GreaterThan_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCDateOnly l))),
           Value (Literal (Datetime (UTCDateOnly r))) ) ->
           if Datetime.utcdateonly_GreaterThan l r then e_true else e_false
@@ -191,10 +195,12 @@ let check_cmp lhs rhs op =
           if l <= Q.of_bigint r then e_true else e_false
       | ( Value (Literal (Datetime (UTCTimestamp l))),
           Value (Literal (Datetime (UTCTimestamp r))) ) ->
-          if Datetime.utctimestamp_LessThanEqual_micro_micro l r then e_true else e_false
+          if Datetime.utctimestamp_LessThanEqual_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCTimeOnly l))),
           Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-          if Datetime.utctimeonly_LessThanEqual_micro_micro l r then e_true else e_false
+          if Datetime.utctimeonly_LessThanEqual_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCDateOnly l))),
           Value (Literal (Datetime (UTCDateOnly r))) ) ->
           if Datetime.utcdateonly_LessThanEqual l r then e_true else e_false
@@ -217,10 +223,12 @@ let check_cmp lhs rhs op =
           if l >= Q.of_bigint r then e_true else e_false
       | ( Value (Literal (Datetime (UTCTimestamp l))),
           Value (Literal (Datetime (UTCTimestamp r))) ) ->
-          if Datetime.utctimestamp_GreaterThanEqual_micro_micro l r then e_true else e_false
+          if Datetime.utctimestamp_GreaterThanEqual_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCTimeOnly l))),
           Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-          if Datetime.utctimeonly_GreaterThanEqual_micro_micro l r then e_true else e_false
+          if Datetime.utctimeonly_GreaterThanEqual_micro_micro l r then e_true
+          else e_false
       | ( Value (Literal (Datetime (UTCDateOnly l))),
           Value (Literal (Datetime (UTCDateOnly r))) ) ->
           if Datetime.utcdateonly_GreaterThanEqual l r then e_true else e_false
@@ -541,7 +549,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       Rec_value
         (Value
            (Literal
-              (Datetime (UTCTimestamp (Current_time.get_current_utctimestamp_micro ())))))
+              (Datetime
+                 (UTCTimestamp (Current_time.get_current_utctimestamp_micro ())))))
   | Value (Funcall { func : string; args : record_item list })
     when func = "timestamp_to_dateonly" && List.length args = 1 -> (
       match args with
@@ -581,6 +590,38 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
               Rec_value (Value (Literal (Int r)))
           | _ -> Rec_value e)
       | _ -> Rec_value e)
+  | Value (Funcall { func : string; args : record_item list })
+    when func = "Map.get" && List.length args = 2 -> (
+      match args with
+      | [ m; k ] -> (
+          match (evaluate_record_item m, evaluate_record_item k) with
+          | Rec_value (Value (Literal (MapColl (d, vs)))), k -> (
+              match CCList.find_opt (fun (a, _) -> a = k) vs with
+              | None -> d
+              | Some (_, v) -> v)
+          | _ -> Rec_value e)
+      | _ -> Rec_value e)
+  | Value (Funcall { func : string; args : record_item list })
+    when func = "Map.add" && List.length args = 3 -> (
+      match args with
+      | [ m; k; v ] -> (
+          match
+            ( evaluate_record_item m,
+              evaluate_record_item k,
+              evaluate_record_item v )
+          with
+          | Rec_value (Value (Literal (MapColl (d, vs)))), k, v -> (
+              match CCList.find_opt (fun (a, _) -> a = k) vs with
+              | None -> Rec_value (Value (Literal (MapColl (d, (k, v) :: vs))))
+              | Some p ->
+                  Rec_value
+                    (Value
+                       (Literal
+                          (MapColl
+                             (d, (k, v) :: CCList.remove ~eq:( = ) ~key:p vs))))
+              )
+          | _ -> Rec_value e)
+      | _ -> Rec_value e)
   | Value (Funcall _) -> Rec_value e
   | Value (Variable v) -> (
       match context.static_context with
@@ -591,6 +632,16 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           | _ -> Rec_value e))
   | Value (Literal (Coll l)) ->
       Rec_value (Value (Literal (Coll (List.map evaluate_record_item l))))
+  | Value (Literal (MapColl (d, vs))) ->
+      Rec_value
+        (Value
+           (Literal
+              (MapColl
+                 ( evaluate_record_item d,
+                   List.map
+                     (fun (l, r) ->
+                       (evaluate_record_item l, evaluate_record_item r))
+                     vs ))))
   | Value (Literal (LiteralSome s)) -> evaluate_record_item s
   | Value (MessageValue { var; field_path }) -> (
       match context.static_context with

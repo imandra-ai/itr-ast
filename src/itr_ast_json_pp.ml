@@ -306,7 +306,8 @@ and expecting_to_json (expecting : expecting) =
                                               ( "index",
                                                 match o with
                                                 | None -> `Null
-                                                | Some x -> `String (Z.to_string x) );
+                                                | Some x ->
+                                                    `String (Z.to_string x) );
                                             ])
                                         x))
                                  field_paths))

@@ -37,7 +37,10 @@ module Message_value = struct
                `Assoc
                  [
                    ("name", `String x);
-                   ("index", match o with None -> `Null | Some x -> `String (Z.to_string x));
+                   ( "index",
+                     match o with
+                     | None -> `Null
+                     | Some x -> `String (Z.to_string x) );
                  ])
              t.field_path) )
     in
