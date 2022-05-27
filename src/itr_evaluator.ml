@@ -591,6 +591,14 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           | _ -> Rec_value e)
       | _ -> Rec_value e)
   | Value (Funcall { func : string; args : record_item list })
+    when func = "Map.get_default" && List.length args = 1 -> (
+      match args with
+      | [ m ] -> (
+          match evaluate_record_item m with
+          | Rec_value (Value (Literal (MapColl (d, _)))) -> d
+          | _ -> Rec_value e)
+      | _ -> Rec_value e)
+  | Value (Funcall { func : string; args : record_item list })
     when func = "Map.get" && List.length args = 2 -> (
       match args with
       | [ m; k ] -> (
