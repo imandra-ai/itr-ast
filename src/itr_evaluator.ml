@@ -6,8 +6,13 @@ let retrieve_current_vars (expr : expr) : (string * Z.t option) list list =
        | Value (MessageValue { var = None; field_path }) -> Some field_path
        | _ -> None)
 
+type 'a msg = {
+  msg: 'a;
+  tag: string;
+}
+
 type 'a msg_or_expr =
-  | Msg of ('a * string)
+  | Msg of 'a msg
   | Record_item of record_item
 
 type field_presence =
@@ -25,8 +30,8 @@ end)
 
 type 'a static_context = {
   local_vars: 'a msg_or_expr String_map.t;
-  implicit_message: ('a * string) option;
-  get_field: 'a -> (string * Z.t option) list -> record_item;
+  implicit_message: 'a msg option;
+  get_field: 'a -> field_path -> record_item;
 }
 
 type field_presence_map = field_presence Field_path_map.t
@@ -780,11 +785,11 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match var, context.implicit_message with
       | Some x, _ ->
         (match String_map.get x context.local_vars with
-        | Some (Msg (msg, _tag)) ->
+        | Some (Msg { msg; _ }) ->
           evaluate_record_item (context.get_field msg field_path)
         | Some (Record_item ri) -> evaluate_record_item ri
         | _ -> Rec_value e)
-      | None, Some (msg, _tag) ->
+      | None, Some { msg; _ } ->
         evaluate_record_item (context.get_field msg field_path)
       | None, None -> Rec_value e))
   | Add { lhs : expr; op : char; rhs : expr } ->
