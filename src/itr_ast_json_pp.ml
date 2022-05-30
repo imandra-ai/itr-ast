@@ -18,7 +18,7 @@ let datetime_to_json : datetime -> t = function
 let rec literal_to_json : literal -> t = function
   | Bool b -> `Assoc [ ("Bool", `Bool b) ]
   | Int i -> `Assoc [ ("Int", `String (Z.to_string i)) ]
-  | String s -> `Assoc [ ("String", `String (sprintf "\"%s\"" s)) ]
+  | String s -> `Assoc [ ("String", `String s) ]
   | Float q -> `Assoc [ ("Float", `String (Q.to_string q)) ]
   | Coll l -> `Assoc [ ("Coll", `List (List.map record_item_to_json l)) ]
   | MapColl (d, l) ->

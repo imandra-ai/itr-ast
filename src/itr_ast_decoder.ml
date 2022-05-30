@@ -49,9 +49,7 @@ let rec literal_decoder () : I.literal D.decoder =
         I.Int (Z.of_string i)
     | "String" ->
         let+ s = string in
-        if CCString.length s > 2 then
-          I.String (CCString.sub s 1 (CCString.length s - 2))
-        else String ""
+        I.String s
     | "Float" ->
         let+ q = string in
         I.Float (Q.of_string q)
