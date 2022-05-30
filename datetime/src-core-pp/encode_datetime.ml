@@ -4,11 +4,13 @@ open Datetime
 let zfill (n : int) (s : string) : string =
   let bv = Bytes.of_string s in
   let length = Bytes.length bv in
-  if n <= length then Bytes.to_string bv
-  else
+  if n <= length then
+    Bytes.to_string bv
+  else (
     let result = Bytes.make n '0' in
     Bytes.blit bv 0 result (n - length) length;
     Bytes.to_string result
+  )
 
 let encode_UTCDateOnly (x : fix_utcdateonly) : string =
   let y, m, d = T.to_date x in
@@ -27,8 +29,10 @@ let encode_UTCTimeOnly_milli (x : fix_utctimeonly_milli) : string =
       (zfill 2 @@ Z.to_string mm)
       (zfill 2 @@ Z.to_string ss)
   in
-  if ms = zero then hms
-  else hms ^ Printf.sprintf ".%s" (zfill 3 @@ Z.to_string ms)
+  if ms = zero then
+    hms
+  else
+    hms ^ Printf.sprintf ".%s" (zfill 3 @@ Z.to_string ms)
 
 let encode_UTCTimeOnly_micro (x : fix_utctimeonly_micro) : string =
   let hh, mm, ss, us = to_time_us x in
@@ -38,8 +42,10 @@ let encode_UTCTimeOnly_micro (x : fix_utctimeonly_micro) : string =
       (zfill 2 @@ Z.to_string mm)
       (zfill 2 @@ Z.to_string ss)
   in
-  if us = zero then hms
-  else hms ^ Printf.sprintf ".%s" (zfill 6 @@ Z.to_string us)
+  if us = zero then
+    hms
+  else
+    hms ^ Printf.sprintf ".%s" (zfill 6 @@ Z.to_string us)
 
 let encode_UTCTimestamp_milli (x : fix_utctimestamp_milli) : string =
   let (y, m, d), (hh, mm, ss, ms) = to_date_time_ms x in
@@ -52,8 +58,10 @@ let encode_UTCTimestamp_milli (x : fix_utctimestamp_milli) : string =
       (zfill 2 @@ Z.to_string mm)
       (zfill 2 @@ Z.to_string ss)
   in
-  if ms = zero then ymdhms
-  else ymdhms ^ Printf.sprintf ".%s" (zfill 3 @@ Z.to_string ms)
+  if ms = zero then
+    ymdhms
+  else
+    ymdhms ^ Printf.sprintf ".%s" (zfill 3 @@ Z.to_string ms)
 
 let encode_UTCTimestamp_micro (x : fix_utctimestamp_micro) : string =
   let (y, m, d), (hh, mm, ss, us) = to_date_time_us x in
@@ -66,8 +74,10 @@ let encode_UTCTimestamp_micro (x : fix_utctimestamp_micro) : string =
       (zfill 2 @@ Z.to_string mm)
       (zfill 2 @@ Z.to_string ss)
   in
-  if us = zero then ymdhms
-  else ymdhms ^ Printf.sprintf ".%s" (zfill 6 @@ Z.to_string us)
+  if us = zero then
+    ymdhms
+  else
+    ymdhms ^ Printf.sprintf ".%s" (zfill 6 @@ Z.to_string us)
 
 let encode_MonthYear ((t, w) : fix_monthyear) : string =
   let y, m, d = T.to_date t in

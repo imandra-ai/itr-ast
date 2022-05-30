@@ -6,13 +6,13 @@ module TE = Imandra_ptime_extra
 (** Helpers *)
 
 let of_date_time_ms (date, (hh, mm, ss, ms)) =
-  let time = (hh, mm, ss) in
+  let time = hh, mm, ss in
   let tz = zero in
   T.of_date_time (date, (time, tz))
   |> Option.flat_map (fun t -> T.add_span t (TE.Span.of_int_ms ms))
 
 let of_time_ms time_ms =
-  let date = (epoch_year, one, one) in
+  let date = epoch_year, one, one in
   of_date_time_ms (date, time_ms)
 
 let to_date_time_ms (t : T.t) =
@@ -20,20 +20,20 @@ let to_date_time_ms (t : T.t) =
   let _d, ps = t |> T.to_span |> T.Span.to_d_ps in
   let ps = ps mod ps_count_in_s in
   let ms = ps / ps_count_in_ms in
-  ((y, m, d), (hh, mm, ss, ms))
+  (y, m, d), (hh, mm, ss, ms)
 
 let to_time_ms (t : T.t) =
   let _date, time_ms = to_date_time_ms t in
   time_ms
 
 let of_date_time_us (date, (hh, mm, ss, us)) =
-  let time = (hh, mm, ss) in
+  let time = hh, mm, ss in
   let tz = zero in
   T.of_date_time (date, (time, tz))
   |> Option.flat_map (fun t -> T.add_span t (TE.Span.of_int_us us))
 
 let of_time_us time_us =
-  let date = (epoch_year, one, one) in
+  let date = epoch_year, one, one in
   of_date_time_us (date, time_us)
 
 let to_date_time_us (t : T.t) =
@@ -41,14 +41,16 @@ let to_date_time_us (t : T.t) =
   let _d, ps = t |> T.to_span |> T.Span.to_d_ps in
   let ps = ps mod ps_count_in_s in
   let us = ps / ps_count_in_us in
-  ((y, m, d), (hh, mm, ss, us))
+  (y, m, d), (hh, mm, ss, us)
 
 let to_time_us (t : T.t) =
   let _date, time_us = to_date_time_us t in
   time_us
 
 let to_millis (t : T.t) = T.truncate ~frac_s:three t
+
 let to_micros (t : T.t) = T.truncate ~frac_s:six t
+
 let to_days (d : T.Span.t) = T.Span.to_int_s d / s_count_in_day
 
 type fix_utctimestamp_milli = T.t
@@ -231,12 +233,18 @@ let localmktdate_LessThanEqual (lmd1 : fix_localmktdate)
   T.compare lmd1 lmd2 <= zero
 
 (** Week *)
-type fix_week = Week_1 | Week_2 | Week_3 | Week_4 | Week_5
+type fix_week =
+  | Week_1
+  | Week_2
+  | Week_3
+  | Week_4
+  | Week_5
 
 let compare_week w1 w2 =
-  if w1 = w2 then zero
-  else
-    match (w1, w2) with
+  if w1 = w2 then
+    zero
+  else (
+    match w1, w2 with
     | Week_1, _ -> neg_one
     | Week_2, Week_1 -> one
     | Week_2, _ -> neg_one
@@ -245,6 +253,7 @@ let compare_week w1 w2 =
     | Week_4, (Week_1 | Week_2 | Week_3) -> one
     | Week_4, _ -> neg_one
     | Week_5, _ -> one
+  )
 
 type fix_monthyear = T.t * fix_week option
 (** MonthYear
@@ -258,7 +267,7 @@ type fix_monthyear = T.t * fix_week option
     TODO: represent YYYYMM (no week or day)
  *)
 
-let default_monthyear = (T.epoch, None)
+let default_monthyear = T.epoch, None
 
 let make_monthyear (year : int) (month : int) (week : fix_week option) :
     fix_monthyear option =
@@ -273,17 +282,22 @@ let is_valid_monthyear ((t, week) : fix_monthyear) =
   let _d, ps = T.to_span t |> T.Span.to_d_ps in
   let _y, _m, d = T.to_date t in
   TE.is_valid t && ps = zero
-  && match week with Some _ -> d = one | None -> true
+  &&
+  match week with
+  | Some _ -> d = one
+  | None -> true
 
 let compare_monthyear ((t1, w1) : fix_monthyear) ((t2, w2) : fix_monthyear) =
   let c = T.compare t1 t2 in
-  if c <> zero then c
-  else
-    match (w1, w2) with
+  if c <> zero then
+    c
+  else (
+    match w1, w2 with
     | Some w1, Some w2 -> compare_week w1 w2
     | Some _, None -> one
     | None, Some _ -> neg_one
     | None, None -> zero
+  )
 
 let monthyear_GreaterThan (my1 : fix_monthyear) (my2 : fix_monthyear) =
   compare_monthyear my1 my2 > zero
@@ -306,6 +320,7 @@ type fix_utctimeonly_milli = T.t
 type fix_utctimeonly_micro = T.t
 
 let default_utctimeonly_milli = T.epoch
+
 let default_utctimeonly_micro = T.epoch
 
 let make_utctimeonly_milli (hour : int) (minute : int) (second : int)
@@ -488,11 +503,17 @@ let duration_utctimestamp_micro_Add (dur : fix_duration)
   T.add_span t dur |> Option.get_or ~default:t
 
 let seconds_to_duration seconds : fix_duration = T.Span.of_int_s seconds
+
 let duration_to_seconds dur : int = T.Span.to_int_s dur
+
 let duration_Equal d1 d2 = T.Span.equal d1 d2
+
 let duration_GreaterThan d1 d2 = T.Span.compare d1 d2 > zero
+
 let duration_GreaterThanEqual d1 d2 = T.Span.compare d1 d2 >= zero
+
 let duration_LessThan d1 d2 = T.Span.compare d1 d2 < zero
+
 let duration_LessThanEqual d1 d2 = T.Span.compare d1 d2 <= zero
 
 let convert_utctimestamp_milli_utctimeonly_milli (ts : fix_utctimestamp_milli) :
@@ -540,13 +561,13 @@ let convert_utctimestamp_micro_monthyear (ts : fix_utctimestamp_micro) :
     fix_monthyear =
   let d, _ps = ts |> T.to_span |> T.Span.to_d_ps in
   let t = T.unsafe_of_d_ps (d, zero) in
-  (t, None)
+  t, None
 
 let convert_utctimestamp_milli_monthyear (ts : fix_utctimestamp_milli) :
     fix_monthyear =
   let d, _ps = ts |> T.to_span |> T.Span.to_d_ps in
   let t = T.unsafe_of_d_ps (d, zero) in
-  (t, None)
+  t, None
 
 let make_utctimestamp_micro_utctimeonly_micro_utcdateonly
     (to_ : fix_utctimeonly_micro) (do_ : fix_utcdateonly) :

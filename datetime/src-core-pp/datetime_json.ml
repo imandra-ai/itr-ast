@@ -4,7 +4,12 @@ module JU = Yojson.Basic.Util
 module D = Decoders_yojson.Basic.Decode
 open D.Infix
 
-let filter_nulls x = List.filter (function _, `Null -> false | _ -> true) x
+let filter_nulls x =
+  List.filter
+    (function
+      | _, `Null -> false
+      | _ -> true)
+    x
 
 let span_to_json (s : T.span) =
   let d, ps = T.Span.to_d_ps s in
@@ -12,10 +17,10 @@ let span_to_json (s : T.span) =
 
 let span_decoder : T.span D.decoder =
   D.list D.string >>= function
-  | [ d; ps ] -> (
-      match T.Span.of_d_ps (Z.of_string d, Z.of_string ps) with
-      | Some s -> D.succeed s
-      | None -> D.fail "invalid time span")
+  | [ d; ps ] ->
+    (match T.Span.of_d_ps (Z.of_string d, Z.of_string ps) with
+    | Some s -> D.succeed s
+    | None -> D.fail "invalid time span")
   | _ -> D.fail "expected [d, ps]"
 
 let ptime_to_json (t : T.t) = span_to_json (T.to_span t)
@@ -27,7 +32,11 @@ let ptime_decoder : T.t D.decoder =
   | None -> D.fail "invalid timestamp"
 
 let validate_with f msg decoder =
-  decoder >>= fun x -> if f x then D.succeed x else D.fail msg
+  decoder >>= fun x ->
+  if f x then
+    D.succeed x
+  else
+    D.fail msg
 
 let utctimestamp_milli_to_json (ts : fix_utctimestamp_milli) = ptime_to_json ts
 
@@ -119,19 +128,24 @@ let week_decoder : fix_week Decoders_yojson.Basic.Decode.decoder =
   | "Week5" -> D.succeed Week_5
   | x -> D.fail (x ^ " is not a valid Week encoding.")
 
-let week_opt_to_json = function None -> `Null | Some x -> week_to_json x
+let week_opt_to_json = function
+  | None -> `Null
+  | Some x -> week_to_json x
 
 let monthyear_to_json ((t, w) : fix_monthyear) =
   let list_assoc =
-    [ ("t", ptime_to_json t); ("week", week_opt_to_json w) ] |> filter_nulls
+    [ "t", ptime_to_json t; "week", week_opt_to_json w ] |> filter_nulls
   in
   `Assoc list_assoc
 
 let monthyear_decoder : fix_monthyear Decoders_yojson.Basic.Decode.decoder =
   D.field "t" ptime_decoder >>= fun t ->
   D.maybe (D.field "week" week_decoder) >>= fun w ->
-  let my = (t, w) in
-  if is_valid_monthyear my then D.succeed my else D.fail "invalid fix_monthyear"
+  let my = t, w in
+  if is_valid_monthyear my then
+    D.succeed my
+  else
+    D.fail "invalid fix_monthyear"
 
 let monthyear_opt_to_json = function
   | None -> `Null
