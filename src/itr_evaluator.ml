@@ -20,8 +20,6 @@ type field_presence =
   | NotPresent
   | Unknown
 
-type field_path = (string * Z.t option) list
-
 module Field_path_map = CCMap.Make (struct
   type t = field_path
 

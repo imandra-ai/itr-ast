@@ -14,8 +14,10 @@ end
 
 module String_map = Map_extra (CCMap.Make (CCString))
 
+type field_path = (string * Z.t option) list
+
 module Field_path_set = CCSet.Make (struct
-  type t = (string * Z.t option) list
+  type t = field_path
 
   let compare = compare
 end)
@@ -25,7 +27,7 @@ let pp_string fmt s = CCFormat.(fprintf fmt "%S" s)
 module Message_value = struct
   type t = {
     var: string option;
-    field_path: (string * Z.t option) list;
+    field_path: field_path;
   }
 
   let mk ~var field_path = { var; field_path }
