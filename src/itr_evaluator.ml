@@ -359,7 +359,13 @@ let rec is_ground_expr : expr -> bool = function
   | Value (Variable _v) -> false
   | Value (MessageValue _mv) -> false
   | Value (Funcall { args; _ }) -> CCList.for_all is_ground args
-  | Value _ -> true
+  | Value (ObjectProperty { obj; _ }) -> is_ground obj
+  | Value (CaseSplit { default_value; cases }) ->
+    is_ground default_value
+    && CCList.for_all (fun (a, b) -> is_ground a && is_ground b) cases
+  | Value (DataSetValue { default; constraints; _ }) ->
+    is_ground default && CCList.for_all is_ground constraints
+  | Value (Literal _) -> true
   | Not e1 -> is_ground_expr e1
   | Or { lhs; rhs }
   | And { lhs; rhs }
@@ -367,10 +373,8 @@ let rec is_ground_expr : expr -> bool = function
   | Add { lhs; rhs; _ }
   | Mul { lhs; rhs; _ } ->
     is_ground_expr lhs && is_ground_expr rhs
-  | Eq { lhs = Rec_value lhs; rhs = Rec_value rhs } ->
-    is_ground_expr lhs && is_ground_expr rhs
+  | Eq { lhs; rhs } -> is_ground lhs && is_ground rhs
   | In { el; _ } -> is_ground_expr el
-  | _ -> true
 
 and is_ground (e : record_item) : bool =
   match e with
