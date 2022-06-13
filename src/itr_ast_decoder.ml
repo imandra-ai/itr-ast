@@ -1,6 +1,8 @@
 module I = Itr_ast
 module D = Decoders_yojson.Basic.Decode
 
+let version : int option ref = ref None
+
 let name_and_index_decoder : (string * Z.t option) D.decoder =
   let open D in
   let* name = field "name" string in
@@ -49,14 +51,35 @@ let rec literal_decoder () : I.literal D.decoder =
       let+ b = bool in
       I.Bool b
     | "Int" ->
-      let+ i = string in
-      I.Int (Z.of_string i)
+      one_of
+        [
+          ( "int_ast_string",
+            let+ i = string in
+            I.Int (Z.of_string i) );
+          ( "int_as_int",
+            let+ i = int in
+            I.Int (Z.of_int i) );
+        ]
     | "String" ->
+      (* Assuming for older strings here that quotes were used for encoding before *)
       let+ s = string in
-      I.String s
+      if CCString.length s > 0 && CCOption.is_none !version then
+        if s.[0] = '"' then
+          I.String (CCString.sub s 1 (CCString.length s - 2))
+        else
+          I.String s
+      else
+        I.String s
     | "Float" ->
-      let+ q = string in
-      I.Float (Q.of_string q)
+      one_of
+        [
+          ( "float_as_string",
+            let+ q = string in
+            I.Float (Q.of_string q) );
+          ( "float_as_float",
+            let+ q = float in
+            I.Float (Q.of_float q) );
+        ]
     | "Coll" ->
       let+ c =
         list
@@ -323,7 +346,13 @@ let instruction_decoder () : I.instruction D.decoder =
       succeed (I.Set { prop; value })
     | "Send" ->
       let* variable = field "variable" (nullable string) in
-      let* tag = field "tag" string in
+      let* tag =
+        one_of
+          [
+            "tag", field "tag" string;
+            "template", field "template" (field "name" string);
+          ]
+      in
       let* withs = field "withs" (nullable (record_decoder ())) in
       succeed (I.Send { variable; tag; withs })
     | "Receive" ->
@@ -336,17 +365,9 @@ let instruction_decoder () : I.instruction D.decoder =
       let* prop = field "prop" string in
       let+ and_set = field "and_set" bool in
       I.Prompt { prop; and_set }
+    | "Call" ->
+      (* this is for older scripts *)
+      let* prop = field "variable" string in
+      let+ value = field "call" (value_decoder ()) in
+      I.Set { prop; value = Rec_value (Value value) }
     | _ -> fail "unrecognised instruction")
-(*
-leaving here to put back for ipl-worker
-
-
-let instructions_decoder :
-    (instruction list * Model_messages.model_msg_opt_def list) decoder =
-  let* instructions = field "instructions" (list (instruction_decoder ())) in
-  let* msgs =
-    field "msgs" (list Json_to_message.model_message_decoder_opt_def)
-  in
-  succeed (instructions, msgs)
-
-*)
