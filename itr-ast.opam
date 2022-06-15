@@ -11,4 +11,6 @@ doc: "https://github.com/AestheticIntegration/ipl_ast"
 build: [["dune" "build" "-p" name "-j" jobs]]
 depends: [
   "containers"
+  "decoders"
+  "decoders-yojson"
 ]
