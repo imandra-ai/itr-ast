@@ -27,5 +27,5 @@ clean: _opam
 	opam exec -- dune clean
 
 .PHONY: format
-format: dev-depsOB
+format: dev-deps
 	opam exec -- dune build @src/fmt --auto-promote || true
