@@ -1,0 +1,11 @@
+opam-version: "1.2"
+name: "fix-engine"
+version: "1.0"
+synopsis: "Fix engine"
+maintainer: "Ewen Maclean <ewen@aestheticintegration.com>"
+authors: "Ewen Maclean <ewen@aestheticintegration.com>"
+homepage: "https://github.com/AestheticIntegration/itr_ast"
+bug-reports: "https://github.com/AestheticIntegration/itr_ast/issues"
+license: "APACHE-2.0"
+doc: "https://github.com/AestheticIntegration/itr_ast"
+build: [["dune" "build" "-p" name "-j" jobs]]
