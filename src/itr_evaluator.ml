@@ -780,7 +780,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                      evaluate_record_item l, evaluate_record_item r)
                    vs ))))
   | Value (Literal (LiteralSome s)) ->
-    Rec_value (Value (Literal (LiteralSome (evaluate_record_item s))))
+    evaluate_record_item s
   | Value (MessageValue { var; field_path }) ->
     (match context.static_context with
     | None -> Rec_value e
