@@ -44,6 +44,16 @@ let datetime_decoder : I.datetime D.decoder =
       I.Duration u
     | s -> fail @@ "unrecognised datetime: " ^ s)
 
+let hof_type_decoder: I.hof_type D.decoder =
+let open D in
+D.single_field (function
+  | "For_all" -> succeed I.For_all
+  | "Exists" -> succeed I.Exists
+  | "Map" -> succeed I.Map
+  | "Filter" -> succeed I.Filter
+  | "Find" -> succeed I.Find
+  | s -> fail @@ "unrecognised hof_type: " ^ s)
+
 let rec literal_decoder () : I.literal D.decoder =
   let open D in
   single_field (function
@@ -176,6 +186,11 @@ and value_decoder () : I.value D.decoder =
       let* default = field "default" (record_item_decoder ()) in
       let+ constraints = field "constraints" (list (record_item_decoder ())) in
       I.DataSetValue { name; field_name; default; constraints }
+    | "Hof" ->
+      let* hof_type = field "hof_type" hof_type_decoder in
+      let* lambda_vars = field "lambda_vars" (list (value_decoder ())) in
+      let+ body = field "body" (record_item_decoder ()) in
+      I.Hof {hof_type;lambda_vars;body}
     | s -> fail @@ "unrecognised value:" ^ s)
 
 and expr_decoder () : I.expr D.decoder =

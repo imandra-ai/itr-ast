@@ -15,6 +15,12 @@ let datetime_to_json : datetime -> t = function
   | MonthYear d -> `Assoc [ "MonthYear", Datetime_json.monthyear_to_json d ]
   | Duration d -> `Assoc [ "Duration", Datetime_json.duration_to_json d ]
 
+let hof_type_to_json : hof_type -> t = function
+    | For_all -> `String "For_all"
+    | Exists -> `String "Exists"
+    | Map -> `String "Map"
+    | Filter -> `String "Filter"
+    | Find -> `String "Find"
 let rec literal_to_json : literal -> t = function
   | Bool b -> `Assoc [ "Bool", `Bool b ]
   | Int i -> `Assoc [ "Int", `String (Z.to_string i) ]
@@ -95,6 +101,15 @@ and value_to_json : value -> t = function
               "constraints", `List (List.map record_item_to_json constraints);
             ] );
       ]
+   | Hof {hof_type;lambda_vars;body} ->
+    `Assoc [
+      "Hof",
+      `Assoc [
+        "hof_type", hof_type_to_json hof_type;
+        "lambda_vars", `List (List.map value_to_json lambda_vars);
+        "body", record_item_to_json body
+      ]
+    ]
 
 and opt_index_to_json : Z.t option -> t = function
   | None -> `Null

@@ -71,6 +71,13 @@ module Message_value = struct
       t.field_path
 end
 
+type hof_type =
+  | For_all
+  | Exists
+  | Map
+  | Filter
+  | Find
+
 type datetime =
   | UTCTimestamp of Datetime.fix_utctimestamp_micro
   | UTCTimeOnly of Datetime.fix_utctimeonly_micro
@@ -113,6 +120,11 @@ and value =
       default: record_item;
       constraints: record_item list;
     }
+  | Hof of {
+    hof_type: hof_type;
+    lambda_vars: value list;
+    body: record_item
+  }
 
 and expr =
   | Value of value
@@ -579,6 +591,8 @@ module Value = struct
     | DataSetValue { default; constraints; _ } ->
       exists_record_item f default
       || List.exists (exists_record_item f) constraints
+    | Hof {body;_} ->
+      exists_record_item f body
 
   and exists_expr f = function
     | Value v -> exists f v
