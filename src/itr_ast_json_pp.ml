@@ -16,17 +16,32 @@ let datetime_to_json : datetime -> t = function
   | Duration d -> `Assoc [ "Duration", Datetime_json.duration_to_json d ]
 
 let hof_type_to_json : hof_type -> t = function
-    | For_all -> `String "For_all"
-    | Exists -> `String "Exists"
-    | Map -> `String "Map"
-    | Filter -> `String "Filter"
-    | Find -> `String "Find"
+  | For_all -> `String "For_all"
+  | Exists -> `String "Exists"
+  | Map -> `String "Map"
+  | Filter -> `String "Filter"
+  | Find -> `String "Find"
+
+let coll_type_to_json : coll_type -> t = function
+  | Tuple -> `String "Tuple"
+  | Set -> `String "Set"
+  | List -> `String "List"
+
 let rec literal_to_json : literal -> t = function
   | Bool b -> `Assoc [ "Bool", `Bool b ]
   | Int i -> `Assoc [ "Int", `String (Z.to_string i) ]
   | String s -> `Assoc [ "String", `String s ]
   | Float q -> `Assoc [ "Float", `String (Q.to_string q) ]
-  | Coll l -> `Assoc [ "Coll", `List (List.map record_item_to_json l) ]
+  | Coll (ct, l) ->
+    `Assoc
+      [
+        ( "Coll",
+          `Assoc
+            [
+              "coll_type", coll_type_to_json ct;
+              "args", `List (List.map record_item_to_json l);
+            ] );
+      ]
   | MapColl (d, l) ->
     `Assoc
       [
@@ -48,6 +63,7 @@ and record_item_pair_to_json : record_item * record_item -> t = function
 and value_to_json : value -> t = function
   | Literal l -> `Assoc [ "Literal", literal_to_json l ]
   | Variable v -> `Assoc [ "Variable", `String v ]
+  | LambdaVariable v -> `Assoc [ "LambdaVariable", `String v ]
   | MessageValue mv -> `Assoc [ "Message_value", Message_value.to_json mv ]
   | ObjectProperty op ->
     `Assoc
@@ -101,15 +117,17 @@ and value_to_json : value -> t = function
               "constraints", `List (List.map record_item_to_json constraints);
             ] );
       ]
-   | Hof {hof_type;lambda_vars;body} ->
-    `Assoc [
-      "Hof",
-      `Assoc [
-        "hof_type", hof_type_to_json hof_type;
-        "lambda_vars", `List (List.map value_to_json lambda_vars);
-        "body", record_item_to_json body
+  | Hof { hof_type; lambda_args; body } ->
+    `Assoc
+      [
+        ( "Hof",
+          `Assoc
+            [
+              "hof_type", hof_type_to_json hof_type;
+              "lambda_args", `List (List.map value_to_json lambda_args);
+              "body", record_item_to_json body;
+            ] );
       ]
-    ]
 
 and opt_index_to_json : Z.t option -> t = function
   | None -> `Null

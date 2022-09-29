@@ -779,8 +779,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                    (fun (l, r) ->
                      evaluate_record_item l, evaluate_record_item r)
                    vs ))))
-  | Value (Literal (LiteralSome s)) ->
-    evaluate_record_item s
+  | Value (Literal (LiteralSome s)) -> evaluate_record_item s
   | Value (MessageValue { var; field_path }) ->
     (match context.static_context with
     | None -> Rec_value e
@@ -856,11 +855,12 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | In { el : expr; set : value } ->
     (match evaluate_expr (Value set) with
     | Rec_value (Value (Literal (Coll es))) ->
-    if List.mem (evaluate_expr el)
-    (List.map evaluate_record_item es)
-    then
-      e_true
-      else (if is_ground (Rec_value el) && List.for_all is_ground es then e_false else Rec_value e)
+      if List.mem (evaluate_expr el) (List.map evaluate_record_item es) then
+        e_true
+      else if is_ground (Rec_value el) && List.for_all is_ground es then
+        e_false
+      else
+        Rec_value e
     | _ -> Rec_value e)
   | _ -> Rec_value e
 

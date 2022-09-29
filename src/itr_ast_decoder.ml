@@ -44,15 +44,23 @@ let datetime_decoder : I.datetime D.decoder =
       I.Duration u
     | s -> fail @@ "unrecognised datetime: " ^ s)
 
-let hof_type_decoder: I.hof_type D.decoder =
-let open D in
-D.single_field (function
-  | "For_all" -> succeed I.For_all
-  | "Exists" -> succeed I.Exists
-  | "Map" -> succeed I.Map
-  | "Filter" -> succeed I.Filter
-  | "Find" -> succeed I.Find
-  | s -> fail @@ "unrecognised hof_type: " ^ s)
+let hof_type_decoder : I.hof_type D.decoder =
+  let open D in
+  D.single_field (function
+    | "For_all" -> succeed I.For_all
+    | "Exists" -> succeed I.Exists
+    | "Map" -> succeed I.Map
+    | "Filter" -> succeed I.Filter
+    | "Find" -> succeed I.Find
+    | s -> fail @@ "unrecognised hof_type: " ^ s)
+
+let coll_type_decoder : I.coll_type D.decoder =
+  let open D in
+  D.single_field (function
+    | "Tuple" -> succeed I.Tuple
+    | "Set" -> succeed (I.Set : I.coll_type)
+    | "List" -> succeed I.List
+    | s -> fail @@ "unrecognised coll_type: " ^ s)
 
 let rec literal_decoder () : I.literal D.decoder =
   let open D in
@@ -91,17 +99,19 @@ let rec literal_decoder () : I.literal D.decoder =
             I.Float (Q.of_float q) );
         ]
     | "Coll" ->
-      let+ c =
-        list
-          (one_of
-             [
-               "record_item", record_item_decoder ();
-               ( "expr",
-                 let+ e = expr_decoder () in
-                 I.Rec_value e );
-             ])
+      let* ct = field "coll_type" coll_type_decoder in
+      let+ l =
+        field "args"
+          (list
+             (one_of
+                [
+                  "record_item", record_item_decoder ();
+                  ( "expr",
+                    let+ e = expr_decoder () in
+                    I.Rec_value e );
+                ]))
       in
-      I.Coll c
+      I.Coll (ct, l)
     | "MapColl" ->
       let* d = field "default" (record_item_decoder ()) in
       let+ c = field "elements" (list (record_item_pair_decoder ())) in
@@ -188,9 +198,9 @@ and value_decoder () : I.value D.decoder =
       I.DataSetValue { name; field_name; default; constraints }
     | "Hof" ->
       let* hof_type = field "hof_type" hof_type_decoder in
-      let* lambda_vars = field "lambda_vars" (list (value_decoder ())) in
+      let* lambda_args = field "lambda_args" (list (value_decoder ())) in
       let+ body = field "body" (record_item_decoder ()) in
-      I.Hof {hof_type;lambda_vars;body}
+      I.Hof { hof_type; lambda_args; body }
     | s -> fail @@ "unrecognised value:" ^ s)
 
 and expr_decoder () : I.expr D.decoder =

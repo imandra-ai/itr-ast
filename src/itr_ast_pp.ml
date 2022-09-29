@@ -11,7 +11,7 @@ let datetime_pp (ppf : formatter) : datetime -> unit = function
   | MonthYear d -> fprintf ppf "%s" (Encode_datetime.encode_MonthYear d)
   | Duration d -> fprintf ppf "%s" (Encode_datetime.encode_Duration d)
 
-let hof_type_pp (ppf: formatter) : hof_type -> unit = function
+let hof_type_pp (ppf : formatter) : hof_type -> unit = function
   | For_all -> fprintf ppf "forall"
   | Exists -> fprintf ppf "exists"
   | Map -> fprintf ppf "map"
@@ -24,8 +24,14 @@ let rec literal_pp (ppf : formatter) : literal -> unit = function
   | Int i -> fprintf ppf "%s" (Z.to_string i)
   | String s -> fprintf ppf "\"%s\"" (CCString.escaped s)
   | Float q -> fprintf ppf "%s" (Q.to_string q)
-  | Coll l ->
-    fprintf ppf "%a" CCFormat.(list ~sep:(return " ") record_item_pp) l
+  | Coll (c, l) ->
+    (match c with
+    | Tuple ->
+      fprintf ppf "(%a)" CCFormat.(list ~sep:(return ",") record_item_pp) l
+    | Set ->
+      fprintf ppf "{%a}" CCFormat.(list ~sep:(return ",") record_item_pp) l
+    | List ->
+      fprintf ppf "[%a]" CCFormat.(list ~sep:(return ",") record_item_pp) l)
   | MapColl (d, l) ->
     fprintf ppf "default:%a@, %a" record_item_pp d
       CCFormat.(list ~sep:(return " ") record_item_pair_pp)
@@ -41,7 +47,7 @@ and case_split_pair_pp (ppf : formatter) : record_item * record_item -> unit =
 
 and value_pp (ppf : formatter) : value -> unit = function
   | Literal l -> literal_pp ppf l
-  | Variable v -> fprintf ppf "$%s" v
+  | LambdaVariable v | Variable v -> fprintf ppf "$%s" v
   | MessageValue mv -> fprintf ppf "%a" Message_value.pp mv
   | ObjectProperty op ->
     fprintf ppf "%a%a.%s" record_item_pp_parens op.obj opt_index_pp op.index
@@ -59,11 +65,10 @@ and value_pp (ppf : formatter) : value -> unit = function
       record_item_pp default
       CCFormat.(list ~sep:(return ",") record_item_pp)
       constraints
-  | Hof {hof_type;lambda_vars;body} ->
+  | Hof { hof_type; lambda_args; body } ->
     fprintf ppf "%a.{%a|%a}" hof_type_pp hof_type
-    CCFormat.(list ~sep:(return " ") value_pp) lambda_vars
-    record_item_pp body
-
+      CCFormat.(list ~sep:(return " ") value_pp)
+      lambda_args record_item_pp body
 
 and opt_index_pp (ppf : formatter) : Z.t option -> unit = function
   | None -> ()
