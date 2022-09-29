@@ -113,7 +113,7 @@ and value =
       prop: string;
     }
   | Funcall of {
-      func: string;
+      func: value;
       args: record_item list;
     }
   | CaseSplit of {
@@ -394,7 +394,7 @@ let message_value ?var field_path =
     (MessageValue
        { var; field_path = field_path |> CCList.map (fun f -> f, None) })
 
-let funcall func args = Value (Funcall { func; args })
+let funcall func args = Value (Funcall { func = Literal (String func); args })
 
 let and_ lhs rhs = And { lhs; rhs }
 

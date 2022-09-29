@@ -61,7 +61,7 @@ let rec replace_in_expr e e_check e_replace =
     e_replace
   else (
     match e with
-    | Value (Funcall { func : string; args : record_item list }) ->
+    | Value (Funcall { func : value; args : record_item list }) ->
       Value
         (Funcall
            {
@@ -358,8 +358,10 @@ let check_cmp lhs rhs op =
 let rec is_ground_expr : expr -> bool = function
   | Value (Variable _v) -> false
   | Value (MessageValue _mv) -> false
+  | Value (LambdaVariable _v) -> true
   | Value (Funcall { args; _ }) -> CCList.for_all is_ground args
   | Value (ObjectProperty { obj; _ }) -> is_ground obj
+  | Value (Hof { body; _ }) -> is_ground body
   | Value (CaseSplit { default_value; cases }) ->
     is_ground default_value
     && CCList.for_all (fun (a, b) -> is_ground a && is_ground b) cases
@@ -486,8 +488,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   let evaluate_record_item = evaluate_record_item context in
   match e with
   | Not (Not expr) -> evaluate_expr expr
-  | Not (Value (Funcall { func : string; args : record_item list }))
-    when func = "IsSet" && List.length args = 1 ->
+  | Not (Value (Funcall { func : value; args : record_item list }))
+    when func = Literal (String "IsSet") && List.length args = 1 ->
     evaluate_expr
       (Eq
          { lhs = CCList.hd args; rhs = Rec_value (Value (Literal LiteralNone)) })
@@ -562,8 +564,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     (match lhs, rhs with
     | Rec_value lhs, Rec_value rhs -> check_cmp lhs rhs op
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "String.length" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "String.length") && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -571,9 +573,10 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Int (Z.of_int (CCString.length s)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when (func = "String.length" || func = "LString.length")
-         && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "String.length")
+         || (func = Literal (String "LString.length") && List.length args = 1)
+    ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -581,16 +584,15 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Int (Z.of_int (String.length s)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-  (* translate here *)
-    when func = "IsSet" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "IsSet") && List.length args = 1 ->
     (match args with
     | [ a ] ->
       evaluate_expr
         (Not (Eq { lhs = a; rhs = Rec_value (Value (Literal LiteralNone)) }))
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "defaultIfNotSet" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "defaultIfNotSet") && List.length args = 2 ->
     (match args with
     | [
      Rec_value (Value (MessageValue { var = None; field_path = field_path1 }));
@@ -635,26 +637,23 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
             (Value
                (Funcall { func; args = CCList.map evaluate_record_item args })))
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Set.subset" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Set.subset") && List.length args = 2 ->
     (match args with
     | [ l; r ] ->
       let l = evaluate_record_item l in
       let r = evaluate_record_item r in
       (match l, r with
-      | ( Rec_value (Value (Literal (Coll l))),
-          Rec_value (Value (Literal (Coll r))) ) ->
+      | ( Rec_value (Value (Literal (Coll (_, l)))),
+          Rec_value (Value (Literal (Coll (_, r)))) ) ->
         if CCList.subset ~eq:(fun a b -> a = b) l r then
           e_true
         else
           e_false
-      | _l, _r ->
-        (* print_endline @@ (let j = Itr_ast_json_pp.expr_to_json l in Yojson.Basic.to_string j);
-           print_endline @@ (let j = Itr_ast_json_pp.expr_to_json r in Yojson.Basic.to_string j); *)
-        Rec_value e)
+      | _l, _r -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "FormatDate" ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "FormatDate") ->
     (match args with
     | [ date; Rec_value (Value (Literal (String "yyyyMMdd"))) ] ->
       (match evaluate_record_item date with
@@ -670,22 +669,23 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           (Value
              (Funcall
                 {
-                  func = "DayOf";
+                  func = Literal (String "DayOf");
                   args = [ Rec_value (Value (MessageValue mv)) ];
                 }))
       | _ -> Rec_value e)
     | [ date; Rec_value (Value (Literal (String "yyyyMMdd-HH:mm:ss.SSS"))) ] ->
       evaluate_record_item date
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "date" && args = [] ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "date") && args = [] ->
     Rec_value
       (Value
          (Literal
             (Datetime
                (UTCTimestamp (Current_time.get_current_utctimestamp_micro ())))))
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "timestamp_to_dateonly" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "timestamp_to_dateonly") && List.length args = 1
+    ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -698,8 +698,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                       (Datetime.convert_utctimestamp_micro_utcdateonly t)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "timestamp_to_localmktdate" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "timestamp_to_localmktdate")
+         && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -712,8 +713,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                       (Datetime.convert_utctimestamp_micro_localmktdate t)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "randInt" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "randInt") && List.length args = 2 ->
     (match args with
     | [ l; u ] ->
       (match evaluate_record_item l, evaluate_record_item u with
@@ -723,16 +724,16 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Int r)))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Map.get_default" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Map.get_default") && List.length args = 1 ->
     (match args with
     | [ m ] ->
       (match evaluate_record_item m with
       | Rec_value (Value (Literal (MapColl (d, _)))) -> d
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Map.get" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Map.get") && List.length args = 2 ->
     (match args with
     | [ m; k ] ->
       (match evaluate_record_item m, evaluate_record_item k with
@@ -742,8 +743,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         | Some (_, v) -> v)
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Map.add" && List.length args = 3 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Map.add") && List.length args = 3 ->
     (match args with
     | [ m; k; v ] ->
       (match
@@ -759,7 +760,6 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                   (MapColl (d, (k, v) :: CCList.remove ~eq:( = ) ~key:p vs)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall _) -> Rec_value e
   | Value (Variable v) ->
     (match context.static_context with
     | None -> Rec_value e
@@ -767,8 +767,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match String_map.get v context.local_vars with
       | Some (Record_item ri) -> evaluate_record_item ri
       | _ -> Rec_value e))
-  | Value (Literal (Coll l)) ->
-    Rec_value (Value (Literal (Coll (List.map evaluate_record_item l))))
+  | Value (Literal (Coll (ct, l))) ->
+    Rec_value (Value (Literal (Coll (ct, List.map evaluate_record_item l))))
   | Value (Literal (MapColl (d, vs))) ->
     Rec_value
       (Value
@@ -794,6 +794,54 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | None, Some { msg; _ } ->
         evaluate_record_item (context.get_field msg field_path)
       | None, None -> Rec_value e))
+  | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })
+    when CCList.length args = CCList.length lambda_args ->
+    (match hof_type with
+    | For_all ->
+      (match lambda_args with
+      | [ LambdaVariable e_check ] ->
+        evaluate_expr
+          (CCList.fold_left
+             (fun rhs e_replace ->
+               match e_replace with
+               | Rec_value e_replace ->
+                 let repl =
+                   evaluate_record_item
+                     (replace_in_record_item body
+                        (Value (LambdaVariable e_check)) e_replace)
+                 in
+                 (match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (And { lhs; rhs }) with
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
+                 | _ -> Value (Literal (Bool false)))
+               | _ -> Value (Literal (Bool false)))
+             (Value (Literal (Bool true))) args)
+      | _ -> Rec_value e)
+    | Exists ->
+      (match lambda_args with
+      | [ LambdaVariable e_check ] ->
+        evaluate_expr
+          (CCList.fold_left
+             (fun rhs e_replace ->
+               match e_replace with
+               | Rec_value e_replace ->
+                 let repl =
+                   evaluate_record_item
+                     (replace_in_record_item body
+                        (Value (LambdaVariable e_check)) e_replace)
+                 in
+                 (match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (Or { lhs; rhs }) with
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
+                 | _ -> Value (Literal (Bool false)))
+               | _ -> Value (Literal (Bool false)))
+             (Value (Literal (Bool true))) args)
+      | _ -> Rec_value e)
+    | Map | Filter | Find -> (* TODO *) Rec_value e)
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
     (match lhs, rhs with
@@ -854,7 +902,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | _ -> Rec_value e)
   | In { el : expr; set : value } ->
     (match evaluate_expr (Value set) with
-    | Rec_value (Value (Literal (Coll es))) ->
+    | Rec_value (Value (Literal (Coll (_, es)))) ->
       if List.mem (evaluate_expr el) (List.map evaluate_record_item es) then
         e_true
       else if is_ground (Rec_value el) && List.for_all is_ground es then
@@ -892,7 +940,12 @@ let rec infer_field_presence (context : 'a context) (e : expr) : field_path list
   | Cmp
       {
         lhs =
-          Value (Funcall { func = "defaultIfNotSet"; args = [ def_val; ri ] });
+          Value
+            (Funcall
+              {
+                func = Literal (String "defaultIfNotSet");
+                args = [ def_val; ri ];
+              });
         op;
         rhs;
       } ->
@@ -923,7 +976,11 @@ let rec infer_field_presence (context : 'a context) (e : expr) : field_path list
         lhs =
           Rec_value
             (Value
-              (Funcall { func = "defaultIfNotSet"; args = [ def_val; ri ] }));
+              (Funcall
+                {
+                  func = Literal (String "defaultIfNotSet");
+                  args = [ def_val; ri ];
+                }));
         rhs;
       } ->
     let def_val, ri = evaluate_record_item def_val, evaluate_record_item ri in

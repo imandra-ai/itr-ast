@@ -53,7 +53,7 @@ and value_pp (ppf : formatter) : value -> unit = function
     fprintf ppf "%a%a.%s" record_item_pp_parens op.obj opt_index_pp op.index
       op.prop
   | Funcall { func; args } ->
-    fprintf ppf "%s(%a)" func
+    fprintf ppf "%a(%a)" value_pp func
       CCFormat.(list ~sep:(return ",") record_item_pp)
       args
   | CaseSplit { default_value; cases } ->
@@ -66,7 +66,7 @@ and value_pp (ppf : formatter) : value -> unit = function
       CCFormat.(list ~sep:(return ",") record_item_pp)
       constraints
   | Hof { hof_type; lambda_args; body } ->
-    fprintf ppf "%a.{%a|%a}" hof_type_pp hof_type
+    fprintf ppf "(%a.{%a|%a})" hof_type_pp hof_type
       CCFormat.(list ~sep:(return " ") value_pp)
       lambda_args record_item_pp body
 

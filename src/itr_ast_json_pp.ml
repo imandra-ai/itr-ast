@@ -82,7 +82,7 @@ and value_to_json : value -> t = function
         ( "Funcall",
           `Assoc
             [
-              "name", `String func;
+              "name", value_to_json func;
               "args", `List (List.map record_item_to_json args);
             ] );
       ]

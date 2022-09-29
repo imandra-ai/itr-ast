@@ -167,7 +167,7 @@ and value_decoder () : I.value D.decoder =
       succeed
         (I.ObjectProperty { obj; index = CCOption.map Z.of_string index; prop })
     | "Funcall" ->
-      let* func = field "name" string in
+      let* func = field "name" (value_decoder ()) in
       let* args =
         field "args"
           (list
