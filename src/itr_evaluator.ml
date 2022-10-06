@@ -795,53 +795,56 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         evaluate_record_item (context.get_field msg field_path)
       | None, None -> Rec_value e))
   | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })
-    when CCList.length args = CCList.length lambda_args ->
-    (match hof_type with
-    | For_all ->
-      (match lambda_args with
-      | [ LambdaVariable e_check ] ->
-        evaluate_expr
-          (CCList.fold_left
-             (fun rhs e_replace ->
-               match e_replace with
-               | Rec_value e_replace ->
-                 let repl =
-                   evaluate_record_item
-                     (replace_in_record_item body
-                        (Value (LambdaVariable e_check)) e_replace)
-                 in
-                 (match repl with
-                 | Rec_value lhs ->
-                   (match evaluate_expr (And { lhs; rhs }) with
-                   | Rec_value expr -> expr
+    when CCList.length args = 1 ->
+    (match evaluate_record_item (CCList.hd args) with
+    | Rec_value (Value (Literal (Coll (_, args)))) ->
+      (match hof_type with
+      | For_all ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          evaluate_expr
+            (CCList.fold_left
+               (fun rhs e_replace ->
+                 match e_replace with
+                 | Rec_value e_replace ->
+                   let repl =
+                     evaluate_record_item
+                       (replace_in_record_item body
+                          (Value (LambdaVariable e_check)) e_replace)
+                   in
+                   (match repl with
+                   | Rec_value lhs ->
+                     (match evaluate_expr (And { lhs; rhs }) with
+                     | Rec_value expr -> expr
+                     | _ -> Value (Literal (Bool false)))
                    | _ -> Value (Literal (Bool false)))
                  | _ -> Value (Literal (Bool false)))
-               | _ -> Value (Literal (Bool false)))
-             (Value (Literal (Bool true))) args)
-      | _ -> Rec_value e)
-    | Exists ->
-      (match lambda_args with
-      | [ LambdaVariable e_check ] ->
-        evaluate_expr
-          (CCList.fold_left
-             (fun rhs e_replace ->
-               match e_replace with
-               | Rec_value e_replace ->
-                 let repl =
-                   evaluate_record_item
-                     (replace_in_record_item body
-                        (Value (LambdaVariable e_check)) e_replace)
-                 in
-                 (match repl with
-                 | Rec_value lhs ->
-                   (match evaluate_expr (Or { lhs; rhs }) with
-                   | Rec_value expr -> expr
+               (Value (Literal (Bool true))) args)
+        | _ -> Rec_value e)
+      | Exists ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          evaluate_expr
+            (CCList.fold_left
+               (fun rhs e_replace ->
+                 match e_replace with
+                 | Rec_value e_replace ->
+                   let repl =
+                     evaluate_record_item
+                       (replace_in_record_item body
+                          (Value (LambdaVariable e_check)) e_replace)
+                   in
+                   (match repl with
+                   | Rec_value lhs ->
+                     (match evaluate_expr (Or { lhs; rhs }) with
+                     | Rec_value expr -> expr
+                     | _ -> Value (Literal (Bool false)))
                    | _ -> Value (Literal (Bool false)))
                  | _ -> Value (Literal (Bool false)))
-               | _ -> Value (Literal (Bool false)))
-             (Value (Literal (Bool true))) args)
-      | _ -> Rec_value e)
-    | Map | Filter | Find -> (* TODO *) Rec_value e)
+               (Value (Literal (Bool false))) args)
+        | _ -> Rec_value e)
+      | Map | Filter | Find -> (* TODO *) Rec_value e)
+    | _ -> Rec_value e)
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
     (match lhs, rhs with
