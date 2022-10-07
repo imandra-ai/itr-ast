@@ -505,6 +505,28 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     |> ( function
     | Ok res -> res
     | Error (`GotResult ri) -> ri )
+  | Value
+      (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
+    ->
+    (match evaluate_record_item obj with
+    | Rec_record { elements; _ } as r ->
+      (match index with
+      | None ->
+        (match String_map.get prop elements with
+        | None -> r
+        | Some e -> e)
+      | _ -> r)
+    | Rec_repeating_group { elements; _ } as r ->
+      (match index with
+      | Some i ->
+        (try
+           let rg_element = CCList.nth elements (Z.to_int i) in
+           match String_map.get prop rg_element.elements with
+           | None -> r
+           | Some e -> e
+         with _ -> r)
+      | _ -> r)
+    | e -> e)
   | Not expr ->
     (match evaluate_expr expr with
     | Rec_value (Value (Literal (Bool true))) ->
@@ -797,7 +819,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })
     when CCList.length args = 1 ->
     (match evaluate_record_item (CCList.hd args) with
-    | Rec_value (Value (Literal (Coll (_, args)))) ->
+    | Rec_value (Value (Literal (Coll (ct, args)))) ->
       (match hof_type with
       | For_all ->
         (match lambda_args with
@@ -843,7 +865,60 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                  | _ -> Value (Literal (Bool false)))
                (Value (Literal (Bool false))) args)
         | _ -> Rec_value e)
-      | Map | Filter | Find -> (* TODO *) Rec_value e)
+      | Map ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( ct,
+                       CCList.map
+                         (function
+                           | Rec_value e_replace ->
+                             evaluate_record_item
+                               (replace_in_record_item body
+                                  (Value (LambdaVariable e_check)) e_replace)
+                           (* TODO - in theory can map to rec_record too *)
+                           (* Need a function which replaces *)
+                           | e -> e)
+                         args ))))
+        | _ -> Rec_value e)
+      | Filter ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( ct,
+                       CCList.filter
+                         (function
+                           | Rec_value e_replace ->
+                             is_true
+                               (evaluate_record_item
+                                  (replace_in_record_item body
+                                     (Value (LambdaVariable e_check)) e_replace))
+                           | _ -> false)
+                         args ))))
+        | _ -> Rec_value e)
+      | Find ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          (match
+             CCList.find_opt
+               (function
+                 | Rec_value e_replace ->
+                   is_true
+                     (evaluate_record_item
+                        (replace_in_record_item body
+                           (Value (LambdaVariable e_check)) e_replace))
+                 | _ -> (* TODO deal with records *) false)
+               args
+           with
+          | None -> Rec_value (Value (Literal LiteralNone))
+          | Some r -> r)
+        | _ -> Rec_value e))
     | _ -> Rec_value e)
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
