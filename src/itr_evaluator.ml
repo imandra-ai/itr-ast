@@ -123,6 +123,19 @@ let rec replace_expr_in_expr e e_check e_replace =
            (LiteralSome
               (replace_record_item_in_record_item ri (Rec_value e_check)
                  (Rec_value e_replace))))
+    | Value
+        (Hof
+          { hof_type : hof_type; lambda_args : value list; body : record_item })
+      ->
+      Value
+        (Hof
+           {
+             hof_type;
+             lambda_args;
+             body =
+               replace_record_item_in_record_item body (Rec_value e_check)
+                 (Rec_value e_replace);
+           })
     | Value _ -> e
     | Not expr -> Not (replace_expr_in_expr expr e_check e_replace)
     | Or { lhs : expr; rhs : expr } ->
@@ -214,6 +227,19 @@ and replace_record_item_in_record_item ri (e_check : record_item)
                     ( replace_record_item_in_record_item c e_check e_replace,
                       replace_record_item_in_record_item s e_check e_replace ))
                   cases;
+            }))
+  | Rec_value
+      (Value
+        (Hof
+          { hof_type : hof_type; lambda_args : value list; body : record_item }))
+    ->
+    Rec_value
+      (Value
+         (Hof
+            {
+              hof_type;
+              lambda_args;
+              body = replace_record_item_in_record_item body e_check e_replace;
             }))
   | Rec_value (Value (Literal (Coll (ct, ri)))) ->
     Rec_value
