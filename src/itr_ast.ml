@@ -587,7 +587,8 @@ module Value = struct
     match v with
     | Literal _ | Variable _ | MessageValue _ | LambdaVariable _ -> false
     | ObjectProperty { obj = e; index = _; prop = _ } -> exists_record_item f e
-    | Funcall { func ; args = es } -> CCList.exists (exists_record_item f) es || exists f func
+    | Funcall { func; args = es } ->
+      CCList.exists (exists_record_item f) es || exists f func
     | CaseSplit { default_value; cases } ->
       exists_record_item f default_value
       || CCList.exists
