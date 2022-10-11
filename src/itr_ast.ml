@@ -71,6 +71,18 @@ module Message_value = struct
       t.field_path
 end
 
+type hof_type =
+  | For_all
+  | Exists
+  | Map
+  | Filter
+  | Find
+
+type coll_type =
+  | Set
+  | List
+  | Tuple
+
 type datetime =
   | UTCTimestamp of Datetime.fix_utctimestamp_micro
   | UTCTimeOnly of Datetime.fix_utctimeonly_micro
@@ -84,7 +96,7 @@ type literal =
   | Int of Z.t
   | String of string
   | Float of Q.t
-  | Coll of record_item list
+  | Coll of coll_type * record_item list
   | MapColl of record_item * (record_item * record_item) list
   | LiteralNone
   | LiteralSome of record_item
@@ -93,6 +105,7 @@ type literal =
 and value =
   | Literal of literal
   | Variable of string
+  | LambdaVariable of string
   | MessageValue of Message_value.t
   | ObjectProperty of {
       obj: record_item;
@@ -100,7 +113,7 @@ and value =
       prop: string;
     }
   | Funcall of {
-      func: string;
+      func: value;
       args: record_item list;
     }
   | CaseSplit of {
@@ -112,6 +125,11 @@ and value =
       field_name: string;
       default: record_item;
       constraints: record_item list;
+    }
+  | Hof of {
+      hof_type: hof_type;
+      lambda_args: value list;
+      body: record_item;
     }
 
 and expr =
@@ -209,7 +227,7 @@ let map_value ~map_record_item = function
     ObjectProperty { obj = map_record_item obj; index; prop }
   | Funcall { func; args } ->
     Funcall { func; args = List.map map_record_item args }
-  | Literal (Coll l) -> Literal (Coll (List.map map_record_item l))
+  | Literal (Coll (ct, l)) -> Literal (Coll (ct, List.map map_record_item l))
   | Literal (MapColl (d, l)) ->
     Literal
       (MapColl
@@ -376,7 +394,7 @@ let message_value ?var field_path =
     (MessageValue
        { var; field_path = field_path |> CCList.map (fun f -> f, None) })
 
-let funcall func args = Value (Funcall { func; args })
+let funcall func args = Value (Funcall { func = Literal (String func); args })
 
 let and_ lhs rhs = And { lhs; rhs }
 
@@ -567,9 +585,10 @@ module Value = struct
     f v
     ||
     match v with
-    | Literal _ | Variable _ | MessageValue _ -> false
+    | Literal _ | Variable _ | MessageValue _ | LambdaVariable _ -> false
     | ObjectProperty { obj = e; index = _; prop = _ } -> exists_record_item f e
-    | Funcall { func = _; args = es } -> CCList.exists (exists_record_item f) es
+    | Funcall { func; args = es } ->
+      CCList.exists (exists_record_item f) es || exists f func
     | CaseSplit { default_value; cases } ->
       exists_record_item f default_value
       || CCList.exists
@@ -579,6 +598,7 @@ module Value = struct
     | DataSetValue { default; constraints; _ } ->
       exists_record_item f default
       || List.exists (exists_record_item f) constraints
+    | Hof { body; _ } -> exists_record_item f body
 
   and exists_expr f = function
     | Value v -> exists f v

@@ -56,70 +56,253 @@ let failing_pretty_msg expr =
   fprintf str_formatter "%a" Itr_ast_pp.record_item_pp expr;
   flush_str_formatter ()
 
-let rec replace_in_expr e e_check e_replace =
+let rec replace_expr_in_expr e e_check e_replace =
   if e = e_check then
     e_replace
   else (
     match e with
-    | Value (Funcall { func : string; args : record_item list }) ->
+    | Value (Funcall { func : value; args : record_item list }) ->
       Value
         (Funcall
            {
              func;
              args =
                List.map
-                 (fun arg -> replace_in_record_item arg e_check e_replace)
+                 (fun arg ->
+                   replace_record_item_in_record_item arg (Rec_value e_check)
+                     (Rec_value e_replace))
                  args;
            })
+    | Value
+        (CaseSplit
+          {
+            default_value : record_item;
+            cases : (record_item * record_item) list;
+          }) ->
+      Value
+        (CaseSplit
+           {
+             default_value =
+               replace_record_item_in_record_item default_value
+                 (Rec_value e_check) (Rec_value e_replace);
+             cases =
+               CCList.map
+                 (fun (c, s) ->
+                   ( replace_record_item_in_record_item c (Rec_value e_check)
+                       (Rec_value e_replace),
+                     replace_record_item_in_record_item s (Rec_value e_check)
+                       (Rec_value e_replace) ))
+                 cases;
+           })
+    | Value (Literal (Coll (ct, ri))) ->
+      Value
+        (Literal
+           (Coll
+              ( ct,
+                CCList.map
+                  (fun x ->
+                    replace_record_item_in_record_item x (Rec_value e_check)
+                      (Rec_value e_replace))
+                  ri )))
+    | Value (Literal (MapColl (def, ris))) ->
+      Value
+        (Literal
+           (MapColl
+              ( replace_record_item_in_record_item def (Rec_value e_check)
+                  (Rec_value e_replace),
+                CCList.map
+                  (fun (c, s) ->
+                    ( replace_record_item_in_record_item c (Rec_value e_check)
+                        (Rec_value e_replace),
+                      replace_record_item_in_record_item s (Rec_value e_check)
+                        (Rec_value e_replace) ))
+                  ris )))
+    | Value (Literal (LiteralSome ri)) ->
+      Value
+        (Literal
+           (LiteralSome
+              (replace_record_item_in_record_item ri (Rec_value e_check)
+                 (Rec_value e_replace))))
+    | Value
+        (Hof
+          { hof_type : hof_type; lambda_args : value list; body : record_item })
+      ->
+      Value
+        (Hof
+           {
+             hof_type;
+             lambda_args;
+             body =
+               replace_record_item_in_record_item body (Rec_value e_check)
+                 (Rec_value e_replace);
+           })
     | Value _ -> e
-    | Not expr -> Not (replace_in_expr expr e_check e_replace)
+    | Not expr -> Not (replace_expr_in_expr expr e_check e_replace)
     | Or { lhs : expr; rhs : expr } ->
       Or
         {
-          lhs = replace_in_expr lhs e_check e_replace;
-          rhs = replace_in_expr rhs e_check e_replace;
+          lhs = replace_expr_in_expr lhs e_check e_replace;
+          rhs = replace_expr_in_expr rhs e_check e_replace;
         }
     | And { lhs : expr; rhs : expr } ->
       And
         {
-          lhs = replace_in_expr lhs e_check e_replace;
-          rhs = replace_in_expr rhs e_check e_replace;
+          lhs = replace_expr_in_expr lhs e_check e_replace;
+          rhs = replace_expr_in_expr rhs e_check e_replace;
         }
     | Eq { lhs : record_item; rhs : record_item } ->
       Eq
         {
-          lhs = replace_in_record_item lhs e_check e_replace;
-          rhs = replace_in_record_item rhs e_check e_replace;
+          lhs =
+            replace_record_item_in_record_item lhs (Rec_value e_check)
+              (Rec_value e_replace);
+          rhs =
+            replace_record_item_in_record_item rhs (Rec_value e_check)
+              (Rec_value e_replace);
         }
     | Cmp { lhs : expr; op : string; rhs : expr } ->
       Cmp
         {
-          lhs = replace_in_expr lhs e_check e_replace;
+          lhs = replace_expr_in_expr lhs e_check e_replace;
           op;
-          rhs = replace_in_expr rhs e_check e_replace;
+          rhs = replace_expr_in_expr rhs e_check e_replace;
         }
     | Add { lhs : expr; op : char; rhs : expr } ->
       Add
         {
-          lhs = replace_in_expr lhs e_check e_replace;
+          lhs = replace_expr_in_expr lhs e_check e_replace;
           op;
-          rhs = replace_in_expr rhs e_check e_replace;
+          rhs = replace_expr_in_expr rhs e_check e_replace;
         }
     | Mul { lhs : expr; op : char; rhs : expr } ->
       Mul
         {
-          lhs = replace_in_expr lhs e_check e_replace;
+          lhs = replace_expr_in_expr lhs e_check e_replace;
           op;
-          rhs = replace_in_expr rhs e_check e_replace;
+          rhs = replace_expr_in_expr rhs e_check e_replace;
         }
     | In { el : expr; set : value } ->
-      In { el = replace_in_expr el e_check e_replace; set }
+      In { el = replace_expr_in_expr el e_check e_replace; set }
   )
 
-and replace_in_record_item e e_check e_replace =
-  match e with
-  | Rec_value e -> Rec_value (replace_in_expr e e_check e_replace)
-  | _ -> e
+and replace_record_item_in_record_item ri (e_check : record_item)
+    (e_replace : record_item) =
+  match ri with
+  | Rec_value (Value (Funcall { func : value; args : record_item list })) ->
+    Rec_value
+      (Value
+         (Funcall
+            {
+              func;
+              args =
+                List.map
+                  (fun arg ->
+                    replace_record_item_in_record_item arg e_check e_replace)
+                  args;
+            }))
+  | Rec_value (Eq { lhs : record_item; rhs : record_item }) ->
+    Rec_value
+      (Eq
+         {
+           lhs = replace_record_item_in_record_item lhs e_check e_replace;
+           rhs = replace_record_item_in_record_item rhs e_check e_replace;
+         })
+  | Rec_value
+      (Value
+        (CaseSplit
+          {
+            default_value : record_item;
+            cases : (record_item * record_item) list;
+          })) ->
+    Rec_value
+      (Value
+         (CaseSplit
+            {
+              default_value =
+                replace_record_item_in_record_item default_value e_check
+                  e_replace;
+              cases =
+                CCList.map
+                  (fun (c, s) ->
+                    ( replace_record_item_in_record_item c e_check e_replace,
+                      replace_record_item_in_record_item s e_check e_replace ))
+                  cases;
+            }))
+  | Rec_value
+      (Value
+        (Hof
+          { hof_type : hof_type; lambda_args : value list; body : record_item }))
+    ->
+    Rec_value
+      (Value
+         (Hof
+            {
+              hof_type;
+              lambda_args;
+              body = replace_record_item_in_record_item body e_check e_replace;
+            }))
+  | Rec_value (Value (Literal (Coll (ct, ri)))) ->
+    Rec_value
+      (Value
+         (Literal
+            (Coll
+               ( ct,
+                 CCList.map
+                   (fun x ->
+                     replace_record_item_in_record_item x e_check e_replace)
+                   ri ))))
+  | Rec_value (Value (Literal (MapColl (def, ris)))) ->
+    Rec_value
+      (Value
+         (Literal
+            (MapColl
+               ( replace_record_item_in_record_item def e_check e_replace,
+                 CCList.map
+                   (fun (c, s) ->
+                     ( replace_record_item_in_record_item c e_check e_replace,
+                       replace_record_item_in_record_item s e_check e_replace ))
+                   ris ))))
+  | Rec_value (Value (Literal (LiteralSome ri))) ->
+    Rec_value
+      (Value
+         (Literal
+            (LiteralSome
+               (replace_record_item_in_record_item ri e_check e_replace))))
+  | Rec_value _ -> ri
+  | Rec_record { name; elements } ->
+    Rec_record
+      {
+        name;
+        elements =
+          String_map.map
+            (fun e -> replace_record_item_in_record_item e e_check e_replace)
+            elements;
+      }
+  | Rec_repeating_group
+      {
+        name : string;
+        message_template : string option;
+        num_in_group_field : string;
+        elements : record list;
+      } ->
+    Rec_repeating_group
+      {
+        name;
+        message_template;
+        num_in_group_field;
+        elements =
+          CCList.map
+            (fun { name; elements } ->
+              {
+                name;
+                elements =
+                  String_map.map
+                    (fun e ->
+                      replace_record_item_in_record_item e e_check e_replace)
+                    elements;
+              })
+            elements;
+      }
 
 let e_true = Rec_value (Value (Literal (Bool true)))
 
@@ -358,8 +541,10 @@ let check_cmp lhs rhs op =
 let rec is_ground_expr : expr -> bool = function
   | Value (Variable _v) -> false
   | Value (MessageValue _mv) -> false
+  | Value (LambdaVariable _v) -> true
   | Value (Funcall { args; _ }) -> CCList.for_all is_ground args
   | Value (ObjectProperty { obj; _ }) -> is_ground obj
+  | Value (Hof { body; _ }) -> is_ground body
   | Value (CaseSplit { default_value; cases }) ->
     is_ground default_value
     && CCList.for_all (fun (a, b) -> is_ground a && is_ground b) cases
@@ -486,8 +671,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   let evaluate_record_item = evaluate_record_item context in
   match e with
   | Not (Not expr) -> evaluate_expr expr
-  | Not (Value (Funcall { func : string; args : record_item list }))
-    when func = "IsSet" && List.length args = 1 ->
+  | Not (Value (Funcall { func : value; args : record_item list }))
+    when func = Literal (String "IsSet") && List.length args = 1 ->
     evaluate_expr
       (Eq
          { lhs = CCList.hd args; rhs = Rec_value (Value (Literal LiteralNone)) })
@@ -503,6 +688,28 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     |> ( function
     | Ok res -> res
     | Error (`GotResult ri) -> ri )
+  | Value
+      (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
+    ->
+    (match evaluate_record_item obj with
+    | Rec_record { elements; _ } as r ->
+      (match index with
+      | None ->
+        (match String_map.get prop elements with
+        | None -> r
+        | Some e -> e)
+      | _ -> r)
+    | Rec_repeating_group { elements; _ } as r ->
+      (match index with
+      | Some i ->
+        (try
+           let rg_element = CCList.nth elements (Z.to_int i) in
+           match String_map.get prop rg_element.elements with
+           | None -> r
+           | Some e -> e
+         with _ -> r)
+      | _ -> r)
+    | e -> e)
   | Not expr ->
     (match evaluate_expr expr with
     | Rec_value (Value (Literal (Bool true))) ->
@@ -562,8 +769,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     (match lhs, rhs with
     | Rec_value lhs, Rec_value rhs -> check_cmp lhs rhs op
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "String.length" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "String.length") && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -571,9 +778,10 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Int (Z.of_int (CCString.length s)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when (func = "String.length" || func = "LString.length")
-         && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "String.length")
+         || (func = Literal (String "LString.length") && List.length args = 1)
+    ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -581,16 +789,15 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Int (Z.of_int (String.length s)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-  (* translate here *)
-    when func = "IsSet" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "IsSet") && List.length args = 1 ->
     (match args with
     | [ a ] ->
       evaluate_expr
         (Not (Eq { lhs = a; rhs = Rec_value (Value (Literal LiteralNone)) }))
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "defaultIfNotSet" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "defaultIfNotSet") && List.length args = 2 ->
     (match args with
     | [
      Rec_value (Value (MessageValue { var = None; field_path = field_path1 }));
@@ -635,26 +842,23 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
             (Value
                (Funcall { func; args = CCList.map evaluate_record_item args })))
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Set.subset" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Set.subset") && List.length args = 2 ->
     (match args with
     | [ l; r ] ->
       let l = evaluate_record_item l in
       let r = evaluate_record_item r in
       (match l, r with
-      | ( Rec_value (Value (Literal (Coll l))),
-          Rec_value (Value (Literal (Coll r))) ) ->
+      | ( Rec_value (Value (Literal (Coll (_, l)))),
+          Rec_value (Value (Literal (Coll (_, r)))) ) ->
         if CCList.subset ~eq:(fun a b -> a = b) l r then
           e_true
         else
           e_false
-      | _l, _r ->
-        (* print_endline @@ (let j = Itr_ast_json_pp.expr_to_json l in Yojson.Basic.to_string j);
-           print_endline @@ (let j = Itr_ast_json_pp.expr_to_json r in Yojson.Basic.to_string j); *)
-        Rec_value e)
+      | _l, _r -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "FormatDate" ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "FormatDate") ->
     (match args with
     | [ date; Rec_value (Value (Literal (String "yyyyMMdd"))) ] ->
       (match evaluate_record_item date with
@@ -670,22 +874,23 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           (Value
              (Funcall
                 {
-                  func = "DayOf";
+                  func = Literal (String "DayOf");
                   args = [ Rec_value (Value (MessageValue mv)) ];
                 }))
       | _ -> Rec_value e)
     | [ date; Rec_value (Value (Literal (String "yyyyMMdd-HH:mm:ss.SSS"))) ] ->
       evaluate_record_item date
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "date" && args = [] ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "date") && args = [] ->
     Rec_value
       (Value
          (Literal
             (Datetime
                (UTCTimestamp (Current_time.get_current_utctimestamp_micro ())))))
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "timestamp_to_dateonly" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "timestamp_to_dateonly") && List.length args = 1
+    ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -698,8 +903,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                       (Datetime.convert_utctimestamp_micro_utcdateonly t)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "timestamp_to_localmktdate" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "timestamp_to_localmktdate")
+         && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -712,8 +918,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                       (Datetime.convert_utctimestamp_micro_localmktdate t)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "randInt" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "randInt") && List.length args = 2 ->
     (match args with
     | [ l; u ] ->
       (match evaluate_record_item l, evaluate_record_item u with
@@ -723,16 +929,16 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Int r)))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Map.get_default" && List.length args = 1 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Map.get_default") && List.length args = 1 ->
     (match args with
     | [ m ] ->
       (match evaluate_record_item m with
       | Rec_value (Value (Literal (MapColl (d, _)))) -> d
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Map.get" && List.length args = 2 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Map.get") && List.length args = 2 ->
     (match args with
     | [ m; k ] ->
       (match evaluate_record_item m, evaluate_record_item k with
@@ -742,8 +948,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         | Some (_, v) -> v)
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall { func : string; args : record_item list })
-    when func = "Map.add" && List.length args = 3 ->
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "Map.add") && List.length args = 3 ->
     (match args with
     | [ m; k; v ] ->
       (match
@@ -759,7 +965,6 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                   (MapColl (d, (k, v) :: CCList.remove ~eq:( = ) ~key:p vs)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
-  | Value (Funcall _) -> Rec_value e
   | Value (Variable v) ->
     (match context.static_context with
     | None -> Rec_value e
@@ -767,8 +972,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match String_map.get v context.local_vars with
       | Some (Record_item ri) -> evaluate_record_item ri
       | _ -> Rec_value e))
-  | Value (Literal (Coll l)) ->
-    Rec_value (Value (Literal (Coll (List.map evaluate_record_item l))))
+  | Value (Literal (Coll (ct, l))) ->
+    Rec_value (Value (Literal (Coll (ct, List.map evaluate_record_item l))))
   | Value (Literal (MapColl (d, vs))) ->
     Rec_value
       (Value
@@ -779,8 +984,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                    (fun (l, r) ->
                      evaluate_record_item l, evaluate_record_item r)
                    vs ))))
-  | Value (Literal (LiteralSome s)) ->
-    evaluate_record_item s
+  | Value (Literal (LiteralSome s)) -> evaluate_record_item s
   | Value (MessageValue { var; field_path }) ->
     (match context.static_context with
     | None -> Rec_value e
@@ -795,6 +999,188 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | None, Some { msg; _ } ->
         evaluate_record_item (context.get_field msg field_path)
       | None, None -> Rec_value e))
+  | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })
+    when CCList.length args = 1 ->
+    (match evaluate_record_item (CCList.hd args) with
+    | Rec_value (Value (Literal (Coll (ct, args)))) ->
+      (match hof_type with
+      | For_all ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          evaluate_expr
+            (CCList.fold_left
+               (fun rhs e_replace ->
+                 let repl =
+                   evaluate_record_item
+                     (replace_record_item_in_record_item body
+                        (Rec_value (Value (LambdaVariable e_check))) e_replace)
+                 in
+                 match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (And { lhs; rhs }) with
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
+                 | _ -> Value (Literal (Bool false)))
+               (Value (Literal (Bool true))) args)
+        | _ -> Rec_value e)
+      | Exists ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          evaluate_expr
+            (CCList.fold_left
+               (fun rhs e_replace ->
+                 let repl =
+                   evaluate_record_item
+                     (replace_record_item_in_record_item body
+                        (Rec_value (Value (LambdaVariable e_check))) e_replace)
+                 in
+                 match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (Or { lhs; rhs }) with
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
+                 | _ -> Value (Literal (Bool false)))
+               (Value (Literal (Bool false))) args)
+        | _ -> Rec_value e)
+      | Map ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( ct,
+                       CCList.map
+                         (fun e_replace ->
+                           evaluate_record_item
+                             (replace_record_item_in_record_item body
+                                (Rec_value (Value (LambdaVariable e_check)))
+                                e_replace))
+                         args ))))
+        | _ -> Rec_value e)
+      | Filter ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( ct,
+                       CCList.filter
+                         (fun e_replace ->
+                           is_true
+                             (evaluate_record_item
+                                (replace_record_item_in_record_item body
+                                   (Rec_value (Value (LambdaVariable e_check)))
+                                   e_replace)))
+                         args ))))
+        | _ -> Rec_value e)
+      | Find ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          (match
+             CCList.find_opt
+               (fun e_replace ->
+                 is_true
+                   (evaluate_record_item
+                      (replace_record_item_in_record_item body
+                         (Rec_value (Value (LambdaVariable e_check))) e_replace)))
+               args
+           with
+          | None -> e_none
+          | Some r -> r)
+        | _ -> Rec_value e))
+    | Rec_repeating_group { elements : record list; _ } ->
+      (match hof_type with
+      | For_all ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          evaluate_expr
+            (CCList.fold_left
+               (fun rhs e_replace ->
+                 let repl =
+                   evaluate_record_item
+                     (replace_record_item_in_record_item body
+                        (Rec_value (Value (LambdaVariable e_check))) e_replace)
+                 in
+                 match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (And { lhs; rhs }) with
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
+                 | _ -> Value (Literal (Bool false)))
+               (Value (Literal (Bool true)))
+               (CCList.map (fun r -> Rec_record r) elements))
+        | _ -> Rec_value e)
+      | Exists ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          evaluate_expr
+            (CCList.fold_left
+               (fun rhs e_replace ->
+                 let repl =
+                   evaluate_record_item
+                     (replace_record_item_in_record_item body
+                        (Rec_value (Value (LambdaVariable e_check))) e_replace)
+                 in
+                 match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (Or { lhs; rhs }) with
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
+                 | _ -> Value (Literal (Bool false)))
+               (Value (Literal (Bool false)))
+               (CCList.map (fun r -> Rec_record r) elements))
+        | _ -> Rec_value e)
+      | Map ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( List,
+                       CCList.map
+                         (fun e_replace ->
+                           evaluate_record_item
+                             (replace_record_item_in_record_item body
+                                (Rec_value (Value (LambdaVariable e_check)))
+                                e_replace))
+                         (CCList.map (fun r -> Rec_record r) elements) ))))
+        | _ -> Rec_value e)
+      | Filter ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( List,
+                       CCList.filter
+                         (fun e_replace ->
+                           is_true
+                             (evaluate_record_item
+                                (replace_record_item_in_record_item body
+                                   (Rec_value (Value (LambdaVariable e_check)))
+                                   e_replace)))
+                         (CCList.map (fun r -> Rec_record r) elements) ))))
+        | _ -> Rec_value e)
+      | Find ->
+        (match lambda_args with
+        | [ LambdaVariable e_check ] ->
+          (match
+             CCList.find_opt
+               (fun e_replace ->
+                 is_true
+                   (evaluate_record_item
+                      (replace_record_item_in_record_item body
+                         (Rec_value (Value (LambdaVariable e_check))) e_replace)))
+               (CCList.map (fun r -> Rec_record r) elements)
+           with
+          | None -> e_none
+          | Some r -> r)
+        | _ -> Rec_value e))
+    | _ -> Rec_value e)
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
     (match lhs, rhs with
@@ -855,12 +1241,13 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | _ -> Rec_value e)
   | In { el : expr; set : value } ->
     (match evaluate_expr (Value set) with
-    | Rec_value (Value (Literal (Coll es))) ->
-    if List.mem (evaluate_expr el)
-    (List.map evaluate_record_item es)
-    then
-      e_true
-      else (if is_ground (Rec_value el) && List.for_all is_ground es then e_false else Rec_value e)
+    | Rec_value (Value (Literal (Coll (_, es)))) ->
+      if List.mem (evaluate_expr el) (List.map evaluate_record_item es) then
+        e_true
+      else if is_ground (Rec_value el) && List.for_all is_ground es then
+        e_false
+      else
+        Rec_value e
     | _ -> Rec_value e)
   | _ -> Rec_value e
 
@@ -892,7 +1279,12 @@ let rec infer_field_presence (context : 'a context) (e : expr) : field_path list
   | Cmp
       {
         lhs =
-          Value (Funcall { func = "defaultIfNotSet"; args = [ def_val; ri ] });
+          Value
+            (Funcall
+              {
+                func = Literal (String "defaultIfNotSet");
+                args = [ def_val; ri ];
+              });
         op;
         rhs;
       } ->
@@ -923,7 +1315,11 @@ let rec infer_field_presence (context : 'a context) (e : expr) : field_path list
         lhs =
           Rec_value
             (Value
-              (Funcall { func = "defaultIfNotSet"; args = [ def_val; ri ] }));
+              (Funcall
+                {
+                  func = Literal (String "defaultIfNotSet");
+                  args = [ def_val; ri ];
+                }));
         rhs;
       } ->
     let def_val, ri = evaluate_record_item def_val, evaluate_record_item ri in
@@ -988,7 +1384,7 @@ let nullable_expr (expr : expr)
       let expr =
         List.fold_left
           (fun expr inner_el ->
-            replace_in_expr expr
+            replace_expr_in_expr expr
               (Value (MessageValue { var = None; field_path = inner_el }))
               (Value (Literal LiteralNone)))
           expr el
