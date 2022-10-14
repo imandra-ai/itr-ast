@@ -94,6 +94,18 @@ let rec replace_expr_in_expr e e_check e_replace =
                        (Rec_value e_replace) ))
                  cases;
            })
+    | Value
+        (ObjectProperty
+          { obj : record_item; index : Z.t option; prop : string }) ->
+      Value
+        (ObjectProperty
+           {
+             obj =
+               replace_record_item_in_record_item obj (Rec_value e_check)
+                 (Rec_value e_replace);
+             index;
+             prop;
+           })
     | Value (Literal (Coll (ct, ri))) ->
       Value
         (Literal
@@ -185,10 +197,10 @@ let rec replace_expr_in_expr e e_check e_replace =
       In { el = replace_expr_in_expr el e_check e_replace; set }
   )
 
-and replace_record_item_in_record_item ri (e_check : record_item)
+and replace_record_item_in_expr (ri : expr) (e_check : record_item)
     (e_replace : record_item) =
   match ri with
-  | Rec_value (Value (Funcall { func : value; args : record_item list })) ->
+  | Value (Funcall { func : value; args : record_item list }) ->
     Rec_value
       (Value
          (Funcall
@@ -200,20 +212,30 @@ and replace_record_item_in_record_item ri (e_check : record_item)
                     replace_record_item_in_record_item arg e_check e_replace)
                   args;
             }))
-  | Rec_value (Eq { lhs : record_item; rhs : record_item }) ->
+  | Eq { lhs : record_item; rhs : record_item } ->
     Rec_value
       (Eq
          {
            lhs = replace_record_item_in_record_item lhs e_check e_replace;
            rhs = replace_record_item_in_record_item rhs e_check e_replace;
          })
-  | Rec_value
+  | Value
+      (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
+    ->
+    Rec_value
       (Value
-        (CaseSplit
-          {
-            default_value : record_item;
-            cases : (record_item * record_item) list;
-          })) ->
+         (ObjectProperty
+            {
+              obj = replace_record_item_in_record_item obj e_check e_replace;
+              index;
+              prop;
+            }))
+  | Value
+      (CaseSplit
+        {
+          default_value : record_item;
+          cases : (record_item * record_item) list;
+        }) ->
     Rec_value
       (Value
          (CaseSplit
@@ -228,10 +250,9 @@ and replace_record_item_in_record_item ri (e_check : record_item)
                       replace_record_item_in_record_item s e_check e_replace ))
                   cases;
             }))
-  | Rec_value
-      (Value
-        (Hof
-          { hof_type : hof_type; lambda_args : value list; body : record_item }))
+  | Value
+      (Hof
+        { hof_type : hof_type; lambda_args : value list; body : record_item })
     ->
     Rec_value
       (Value
@@ -241,7 +262,7 @@ and replace_record_item_in_record_item ri (e_check : record_item)
               lambda_args;
               body = replace_record_item_in_record_item body e_check e_replace;
             }))
-  | Rec_value (Value (Literal (Coll (ct, ri)))) ->
+  | Value (Literal (Coll (ct, ri))) ->
     Rec_value
       (Value
          (Literal
@@ -251,7 +272,7 @@ and replace_record_item_in_record_item ri (e_check : record_item)
                    (fun x ->
                      replace_record_item_in_record_item x e_check e_replace)
                    ri ))))
-  | Rec_value (Value (Literal (MapColl (def, ris)))) ->
+  | Value (Literal (MapColl (def, ris))) ->
     Rec_value
       (Value
          (Literal
@@ -262,47 +283,60 @@ and replace_record_item_in_record_item ri (e_check : record_item)
                      ( replace_record_item_in_record_item c e_check e_replace,
                        replace_record_item_in_record_item s e_check e_replace ))
                    ris ))))
-  | Rec_value (Value (Literal (LiteralSome ri))) ->
+  | Value (Literal (LiteralSome ri)) ->
     Rec_value
       (Value
          (Literal
             (LiteralSome
                (replace_record_item_in_record_item ri e_check e_replace))))
-  | Rec_value _ -> ri
-  | Rec_record { name; elements } ->
-    Rec_record
-      {
-        name;
-        elements =
-          String_map.map
-            (fun e -> replace_record_item_in_record_item e e_check e_replace)
-            elements;
-      }
-  | Rec_repeating_group
-      {
-        name : string;
-        message_template : string option;
-        num_in_group_field : string;
-        elements : record list;
-      } ->
-    Rec_repeating_group
-      {
-        name;
-        message_template;
-        num_in_group_field;
-        elements =
-          CCList.map
-            (fun { name; elements } ->
-              {
-                name;
-                elements =
-                  String_map.map
-                    (fun e ->
-                      replace_record_item_in_record_item e e_check e_replace)
-                    elements;
-              })
-            elements;
-      }
+  | ri ->
+    (match e_check, e_replace with
+    | Rec_value e_check, Rec_value e_replace ->
+      Rec_value (replace_expr_in_expr ri e_check e_replace)
+    | _ -> Rec_value ri)
+
+and replace_record_item_in_record_item ri (e_check : record_item)
+    (e_replace : record_item) =
+  if ri = e_check then
+    e_replace
+  else (
+    match ri with
+    | Rec_value ri -> replace_record_item_in_expr ri e_check e_replace
+    | Rec_record { name; elements } ->
+      Rec_record
+        {
+          name;
+          elements =
+            String_map.map
+              (fun e -> replace_record_item_in_record_item e e_check e_replace)
+              elements;
+        }
+    | Rec_repeating_group
+        {
+          name : string;
+          message_template : string option;
+          num_in_group_field : string;
+          elements : record list;
+        } ->
+      Rec_repeating_group
+        {
+          name;
+          message_template;
+          num_in_group_field;
+          elements =
+            CCList.map
+              (fun { name; elements } ->
+                {
+                  name;
+                  elements =
+                    String_map.map
+                      (fun e ->
+                        replace_record_item_in_record_item e e_check e_replace)
+                      elements;
+                })
+              elements;
+        }
+  )
 
 let e_true = Rec_value (Value (Literal (Bool true)))
 
