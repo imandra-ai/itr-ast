@@ -295,6 +295,43 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
       Rec_value (replace_expr_in_expr ri e_check e_replace)
     | _ -> Rec_value ri)
 
+and replace_expr_in_record_item ri (e_check : expr) (e_replace : expr) =
+  match ri with
+  | Rec_value e -> Rec_value (replace_expr_in_expr e e_check e_replace)
+  | Rec_record { name; elements } ->
+    Rec_record
+      {
+        name;
+        elements =
+          String_map.map
+            (fun e -> replace_expr_in_record_item e e_check e_replace)
+            elements;
+      }
+  | Rec_repeating_group
+      {
+        name : string;
+        message_template : string option;
+        num_in_group_field : string;
+        elements : record list;
+      } ->
+    Rec_repeating_group
+      {
+        name;
+        message_template;
+        num_in_group_field;
+        elements =
+          CCList.map
+            (fun { name; elements } ->
+              {
+                name;
+                elements =
+                  String_map.map
+                    (fun e -> replace_expr_in_record_item e e_check e_replace)
+                    elements;
+              })
+            elements;
+      }
+
 and replace_record_item_in_record_item ri (e_check : record_item)
     (e_replace : record_item) =
   if ri = e_check then
@@ -600,8 +637,8 @@ and is_ground (e : record_item) : bool =
   | Rec_value r -> is_ground_expr r
   | Rec_record { elements; _ } ->
     String_map.for_all (fun _ x -> is_ground x) elements
-  (* TODO checking of ground for repeating group structures *)
-  | _ -> false
+  | Rec_repeating_group { elements; _ } ->
+    CCList.for_all (fun x -> is_ground (Rec_record x)) elements
 
 module Expr_set = CCSet.Make (struct
   type t = expr
