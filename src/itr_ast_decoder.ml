@@ -46,21 +46,21 @@ let datetime_decoder : I.datetime D.decoder =
 
 let hof_type_decoder : I.hof_type D.decoder =
   let open D in
-  D.single_field (function
-    | "For_all" -> succeed I.For_all
-    | "Exists" -> succeed I.Exists
-    | "Map" -> succeed I.Map
-    | "Filter" -> succeed I.Filter
-    | "Find" -> succeed I.Find
-    | s -> fail @@ "unrecognised hof_type: " ^ s)
+  string >>= function
+  | "For_all" -> succeed I.For_all
+  | "Exists" -> succeed I.Exists
+  | "Map" -> succeed I.Map
+  | "Filter" -> succeed I.Filter
+  | "Find" -> succeed I.Find
+  | s -> fail @@ "unrecognised hof_type: " ^ s
 
 let coll_type_decoder : I.coll_type D.decoder =
   let open D in
-  D.single_field (function
-    | "Tuple" -> succeed I.Tuple
-    | "Set" -> succeed (I.Set : I.coll_type)
-    | "List" -> succeed I.List
-    | s -> fail @@ "unrecognised coll_type: " ^ s)
+  string >>= function
+  | "Tuple" -> succeed I.Tuple
+  | "Set" -> succeed (I.Set : I.coll_type)
+  | "List" -> succeed I.List
+  | s -> fail @@ "unrecognised coll_type: " ^ s
 
 let rec literal_decoder () : I.literal D.decoder =
   let open D in
@@ -148,6 +148,9 @@ and value_decoder () : I.value D.decoder =
     | "Variable" ->
       let+ v = string in
       I.Variable v
+    | "LambdaVariable" ->
+      let+ lv = string in
+      I.LambdaVariable lv
     | "Message_value" ->
       let+ mv = message_value_decoder in
       I.MessageValue mv
