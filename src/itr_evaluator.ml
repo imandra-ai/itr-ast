@@ -724,6 +724,31 @@ let reconstruct_ands (es : record_item list) : record_item =
   in
   Rec_value (reconstruct_ands_rec es)
 
+let rec eval_add_datetime dt1 op dt2 =
+  let default =
+    Rec_value
+      (Add
+         {
+           rhs = Value (Literal (Datetime dt1));
+           op;
+           lhs = Value (Literal (Datetime dt2));
+         })
+  in
+  match dt2 with
+  | Duration dur ->
+    (match dt1 with
+    | UTCTimestamp t ->
+      Rec_value
+        (Value
+           (Literal
+              (Datetime
+                 (UTCTimestamp (Datetime.utctimestamp_micro_duration_Add t dur)))))
+    | _ -> default)
+  | _ ->
+    (match op, dt1 with
+    | '+', Duration _ -> eval_add_datetime dt2 op dt1
+    | _ -> default)
+
 let rec evaluate_record_item (context : 'a context) (e : record_item) :
     record_item =
   match e with
@@ -1283,6 +1308,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (String (a ^ Q.to_string b))))
       | Value (Literal (Float a)), '+', Value (Literal (String b)) ->
         Rec_value (Value (Literal (String (Q.to_string a ^ b))))
+      | Value (Literal (Datetime dt1)), _, Value (Literal (Datetime dt2)) ->
+        eval_add_datetime dt1 op dt2
       | _, '+', _ | _, '-', _ -> Rec_value (Add { lhs; op; rhs })
       | _, _, _ -> failwith "Unknown Add operator")
     | _ -> Rec_value e)
