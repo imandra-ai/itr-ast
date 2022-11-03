@@ -1313,9 +1313,10 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | In { el : expr; set : value } ->
     (match evaluate_expr (Value set) with
     | Rec_value (Value (Literal (Coll (_, es)))) ->
-      if List.mem (evaluate_expr el) (List.map evaluate_record_item es) then
+      let el = evaluate_expr el in
+      if List.mem el (List.map evaluate_record_item es) then
         e_true
-      else if is_ground (Rec_value el) && List.for_all is_ground es then
+      else if is_ground el && List.for_all is_ground es then
         e_false
       else
         Rec_value e
