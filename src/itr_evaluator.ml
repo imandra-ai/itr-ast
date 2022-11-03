@@ -738,11 +738,15 @@ let rec eval_add_datetime dt1 op dt2 =
   | Duration dur ->
     (match dt1 with
     | UTCTimestamp t ->
-      Rec_value
-        (Value
-           (Literal
-              (Datetime
-                 (UTCTimestamp (Datetime.utctimestamp_micro_duration_Add t dur)))))
+      let ts =
+        match op with
+        | '+' -> Datetime.utctimestamp_micro_duration_Add t dur
+        | '-' ->
+          Datetime.utctimestamp_micro_duration_Add t
+            (Imandra_ptime.Span.neg dur)
+        | _ -> failwith "Unknown Add operator"
+      in
+      Rec_value (Value (Literal (Datetime (UTCTimestamp ts))))
     | _ -> default)
   | _ ->
     (match op, dt1 with
