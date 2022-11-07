@@ -1338,7 +1338,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value (Value (Literal (Float Q.(a / of_bigint b))))
       | Value (Literal (Int a)), '/', Value (Literal (Float b)) ->
         Rec_value (Value (Literal (Float Q.(of_bigint a / b))))
-      | _, '*', _ | _, '/', _ -> Rec_value (Add { lhs; op; rhs })
+      | _, '*', _ | _, '/', _ -> Rec_value (Mul { lhs; op; rhs })
       | _, _, _ -> failwith "Unknown Mul operator")
     | _ -> Rec_value e)
   | In { el : expr; set : value } ->
