@@ -879,6 +879,17 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "List.length") && List.length args = 1 ->
+    (match args with
+    | [ a ] ->
+      (match evaluate_record_item a with
+      | Rec_value (Value (Literal (Coll (_, l)))) ->
+        Rec_value (Value (Literal (Int (Z.of_int (CCList.length l)))))
+      | Rec_repeating_group { elements; _ } ->
+        Rec_value (Value (Literal (Int (Z.of_int (CCList.length elements)))))
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "String.length")
          || (func = Literal (String "LString.length") && List.length args = 1)
     ->
