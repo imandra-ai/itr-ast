@@ -99,19 +99,35 @@ let rec literal_decoder () : I.literal D.decoder =
             I.Float (Q.of_float q) );
         ]
     | "Coll" ->
-      let* ct = field "coll_type" coll_type_decoder in
-      let+ l =
-        field "args"
-          (list
-             (one_of
-                [
-                  "record_item", record_item_decoder ();
-                  ( "expr",
-                    let+ e = expr_decoder () in
-                    I.Rec_value e );
-                ]))
-      in
-      I.Coll (ct, l)
+      one_of
+        [
+          ( "With_coll_type",
+            let* ct = field "coll_type" coll_type_decoder in
+            let+ l =
+              field "args"
+                (list
+                   (one_of
+                      [
+                        "record_item", record_item_decoder ();
+                        ( "expr",
+                          let+ e = expr_decoder () in
+                          I.Rec_value e );
+                      ]))
+            in
+            I.Coll (ct, l) );
+          ( "Old_version_assume_list",
+            let+ l =
+              list
+                (one_of
+                   [
+                     "record_item", record_item_decoder ();
+                     ( "expr",
+                       let+ e = expr_decoder () in
+                       I.Rec_value e );
+                   ])
+            in
+            I.Coll (List, l) );
+        ]
     | "MapColl" ->
       let* d = field "default" (record_item_decoder ()) in
       let+ c = field "elements" (list (record_item_pair_decoder ())) in
