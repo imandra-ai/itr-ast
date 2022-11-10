@@ -289,6 +289,50 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
          (Literal
             (LiteralSome
                (replace_record_item_in_record_item ri e_check e_replace))))
+  | Not expr ->
+    (match replace_record_item_in_expr expr e_check e_replace with
+    | Rec_value expr -> Rec_value (Not expr)
+    | _ -> Rec_value (Not expr))
+  | Or { lhs : expr; rhs : expr } ->
+    (match
+       ( replace_record_item_in_expr lhs e_check e_replace,
+         replace_record_item_in_expr rhs e_check e_replace )
+     with
+    | Rec_value lhs, Rec_value rhs -> Rec_value (Or { lhs; rhs })
+    | _ -> Rec_value (Or { lhs; rhs }))
+  | And { lhs : expr; rhs : expr } ->
+    (match
+       ( replace_record_item_in_expr lhs e_check e_replace,
+         replace_record_item_in_expr rhs e_check e_replace )
+     with
+    | Rec_value lhs, Rec_value rhs -> Rec_value (And { lhs; rhs })
+    | _ -> Rec_value (And { lhs; rhs }))
+  | Cmp { lhs : expr; op : string; rhs : expr } ->
+    (match
+       ( replace_record_item_in_expr lhs e_check e_replace,
+         replace_record_item_in_expr rhs e_check e_replace )
+     with
+    | Rec_value lhs, Rec_value rhs -> Rec_value (Cmp { lhs; op; rhs })
+    | _ -> Rec_value (Cmp { lhs; op; rhs }))
+  | Add { lhs : expr; op : char; rhs : expr } ->
+    (match
+       ( replace_record_item_in_expr lhs e_check e_replace,
+         replace_record_item_in_expr rhs e_check e_replace )
+     with
+    | Rec_value lhs, Rec_value rhs -> Rec_value (Add { lhs; op; rhs })
+    | _ -> Rec_value (Add { lhs; op; rhs }))
+  | Mul { lhs : expr; op : char; rhs : expr } ->
+    (match
+       ( replace_record_item_in_expr lhs e_check e_replace,
+         replace_record_item_in_expr rhs e_check e_replace )
+     with
+    | Rec_value lhs, Rec_value rhs -> Rec_value (Mul { lhs; op; rhs })
+    | _ -> Rec_value (Mul { lhs; op; rhs }))
+  | In { el : expr; set : value } ->
+    (match e_check, e_replace with
+    | Rec_value e_check, Rec_value e_replace ->
+      Rec_value (In { el = replace_expr_in_expr el e_check e_replace; set })
+    | _ -> Rec_value (In { el; set }))
   | ri ->
     (match e_check, e_replace with
     | Rec_value e_check, Rec_value e_replace ->
