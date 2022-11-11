@@ -585,6 +585,15 @@ module Value = struct
     f v
     ||
     match v with
+    | Literal (LiteralSome ri) -> exists_record_item f ri
+    | Literal (Coll (_, ris)) ->
+      CCList.exists (fun ri -> exists_record_item f ri) ris
+    | Literal (MapColl (d, ris)) ->
+      exists_record_item f d
+      || CCList.exists
+           (fun (ril, rir) ->
+             exists_record_item f ril || exists_record_item f rir)
+           ris
     | Literal _ | Variable _ | MessageValue _ | LambdaVariable _ -> false
     | ObjectProperty { obj = e; index = _; prop = _ } -> exists_record_item f e
     | Funcall { func; args = es } ->
@@ -597,7 +606,7 @@ module Value = struct
            cases
     | DataSetValue { default; constraints; _ } ->
       exists_record_item f default
-      || List.exists (exists_record_item f) constraints
+      || CCList.exists (exists_record_item f) constraints
     | Hof { body; _ } -> exists_record_item f body
 
   and exists_expr f = function
