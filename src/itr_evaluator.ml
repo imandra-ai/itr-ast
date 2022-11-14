@@ -945,6 +945,23 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "List.hd") && List.length args = 1 ->
+    (match args with
+    | [ a ] ->
+      (match evaluate_record_item a with
+      | Rec_value (Value (Literal (Coll (List, l)))) -> CCList.hd l
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "List.tl") && List.length args = 1 ->
+    (match args with
+    | [ a ] ->
+      (match evaluate_record_item a with
+      | Rec_value (Value (Literal (Coll (List, l)))) ->
+        Rec_value (Value (Literal (Coll (List, CCList.tl l))))
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "IsSet") && List.length args = 1 ->
     (match args with
     | [ a ] ->
