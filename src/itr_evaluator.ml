@@ -442,22 +442,22 @@ let check_cmp lhs rhs op =
   | "<" ->
     (match lhs, rhs with
     | Value (Literal (Int l)), Value (Literal (Int r)) ->
-      if l < r then
+      if Z.(l < r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Float r)) ->
-      if l < r then
+      if Q.(l < r) then
         e_true
       else
         e_false
     | Value (Literal (Int l)), Value (Literal (Float r)) ->
-      if Q.of_bigint l < r then
+      if Q.(of_bigint l < r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Int r)) ->
-      if l < Q.of_bigint r then
+      if Q.(l < of_bigint r) then
         e_true
       else
         e_false
@@ -495,22 +495,22 @@ let check_cmp lhs rhs op =
   | ">" ->
     (match lhs, rhs with
     | Value (Literal (Int l)), Value (Literal (Int r)) ->
-      if l > r then
+      if Z.(l > r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Float r)) ->
-      if l > r then
+      if Q.(l > r) then
         e_true
       else
         e_false
     | Value (Literal (Int l)), Value (Literal (Float r)) ->
-      if Q.of_bigint l > r then
+      if Q.(of_bigint l > r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Int r)) ->
-      if l > Q.of_bigint r then
+      if Q.(l > of_bigint r) then
         e_true
       else
         e_false
@@ -548,22 +548,22 @@ let check_cmp lhs rhs op =
   | "<=" ->
     (match lhs, rhs with
     | Value (Literal (Int l)), Value (Literal (Int r)) ->
-      if l <= r then
+      if Z.(l <= r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Float r)) ->
-      if l <= r then
+      if Q.(l <= r) then
         e_true
       else
         e_false
     | Value (Literal (Int l)), Value (Literal (Float r)) ->
-      if Q.of_bigint l <= r then
+      if Q.(of_bigint l <= r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Int r)) ->
-      if l <= Q.of_bigint r then
+      if Q.(l <= of_bigint r) then
         e_true
       else
         e_false
@@ -601,22 +601,22 @@ let check_cmp lhs rhs op =
   | ">=" ->
     (match lhs, rhs with
     | Value (Literal (Int l)), Value (Literal (Int r)) ->
-      if l >= r then
+      if Z.(l >= r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Float r)) ->
-      if l >= r then
+      if Q.(l >= r) then
         e_true
       else
         e_false
     | Value (Literal (Int l)), Value (Literal (Float r)) ->
-      if Q.of_bigint l >= r then
+      if Q.(of_bigint l >= r) then
         e_true
       else
         e_false
     | Value (Literal (Float l)), Value (Literal (Int r)) ->
-      if l >= Q.of_bigint r then
+      if Q.(l >= of_bigint r) then
         e_true
       else
         e_false
