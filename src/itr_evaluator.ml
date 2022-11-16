@@ -949,7 +949,11 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
-      | Rec_value (Value (Literal (Coll (List, l)))) -> CCList.hd l
+      | Rec_value (Value (Literal (Coll (List, l)))) ->
+        (match l with
+        | [] -> Rec_value e
+        | h :: _t -> h)
+      | Rec_repeating_group { elements = h :: _; _ } -> Rec_record h
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
@@ -958,7 +962,13 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | [ a ] ->
       (match evaluate_record_item a with
       | Rec_value (Value (Literal (Coll (List, l)))) ->
-        Rec_value (Value (Literal (Coll (List, CCList.tl l))))
+        (match l with
+        | [] -> Rec_value e
+        | _ :: t -> Rec_value (Value (Literal (Coll (List, t)))))
+      | Rec_repeating_group
+          { elements = _ :: t; name; message_template; num_in_group_field } ->
+        Rec_repeating_group
+          { elements = t; name; message_template; num_in_group_field }
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
