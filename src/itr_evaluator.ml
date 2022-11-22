@@ -812,7 +812,7 @@ let rec evaluate_record_item (context : 'a context) (e : record_item) :
 
 and evaluate_expr (context : 'a context) (e : expr) : record_item =
   let evaluate_expr = evaluate_expr context in
-  let evaluate_record_item = evaluate_record_item context in
+  let evaluate_record_item = fix_evaluate_record_item context in
   match e with
   | Not (Not expr) -> evaluate_expr expr
   | Not (Value (Funcall { func : value; args : record_item list }))
@@ -1435,8 +1435,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value e
     | _ -> Rec_value e)
   | _ -> Rec_value e
-
-let fix_evaluate_record_item context record_item =
+and
+fix_evaluate_record_item context record_item =
   let res = evaluate_record_item context record_item in
   if res = record_item then
     record_item
