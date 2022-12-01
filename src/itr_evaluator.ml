@@ -853,7 +853,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
            | Some e -> e
          with _ -> r)
       | _ -> r)
-    | e -> e)
+    | _ -> Rec_value e)
   | Not expr ->
     (match evaluate_expr expr with
     | Rec_value (Value (Literal (Bool true))) ->
@@ -1435,8 +1435,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value e
     | _ -> Rec_value e)
   | _ -> Rec_value e
-and
-fix_evaluate_record_item context record_item =
+
+and fix_evaluate_record_item context record_item =
   let res = evaluate_record_item context record_item in
   if res = record_item then
     record_item
