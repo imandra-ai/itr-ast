@@ -63,7 +63,7 @@ module Message_value = struct
       | s, Some index -> fprintf fmt "%s[%s]" s (Z.to_string index)
     in
     let pp_var_opt fmt = function
-      | None -> ()
+      | None -> fprintf fmt "incoming"
       | Some v -> fprintf fmt "%s." v
     in
     fprintf fmt "%a%a" pp_var_opt t.var
