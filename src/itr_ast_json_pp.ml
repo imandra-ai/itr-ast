@@ -3,17 +3,31 @@ open Itr_ast
 open Yojson.Basic
 module JU = Yojson.Basic.Util
 
+let span_to_json (s : T.span) =
+  let d, ps = T.Span.to_d_ps s in
+  `List [ `Int (Z.to_int d); `Int (Z.to_int ps) ]
+
+let ptime_to_json (t : T.t) = span_to_json (T.to_span t)
+
 let datetime_to_json : datetime -> t = function
-  | UTCTimestamp d ->
-    `Assoc [ "UTCTimestamp", Datetime_json.utctimestamp_micro_to_json d ]
-  | UTCTimeOnly d ->
-    `Assoc [ "UTCTimeOnly", Datetime_json.utctimeonly_micro_to_json d ]
-  | UTCDateOnly d ->
-    `Assoc [ "UTCDateOnly", Datetime_json.utcdateonly_to_json d ]
-  | LocalMktDate d ->
-    `Assoc [ "LocalMktDate", Datetime_json.localmktdate_to_json d ]
-  | MonthYear d -> `Assoc [ "MonthYear", Datetime_json.monthyear_to_json d ]
-  | Duration d -> `Assoc [ "Duration", Datetime_json.duration_to_json d ]
+  | UTCTimestamp d -> `Assoc [ "UTCTimestamp", ptime_to_json d ]
+  | UTCTimeOnly d -> `Assoc [ "UTCTimeOnly", ptime_to_json d ]
+  | UTCDateOnly d -> `Assoc [ "UTCDateOnly", ptime_to_json d ]
+  | LocalMktDate d -> `Assoc [ "LocalMktDate", ptime_to_json d ]
+  | MonthYear (d, w) ->
+    `Assoc
+      [
+        ( "MonthYear",
+          `Assoc
+            [
+              "t", ptime_to_json d;
+              ( "week",
+                match w with
+                | None -> `Null
+                | Some w -> `String (Itr_ast_pp.week_to_string w) );
+            ] );
+      ]
+  | Duration d -> `Assoc [ "Duration", span_to_json d ]
 
 let hof_type_to_json : hof_type -> t = function
   | For_all -> `String "For_all"

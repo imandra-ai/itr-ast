@@ -1,3 +1,5 @@
+module T = Imandra_ptime
+
 module Map_extra (M : CCMap.S) = struct
   include M
 
@@ -83,13 +85,36 @@ type coll_type =
   | List
   | Tuple
 
+(** Week *)
+type fix_week =
+  | Week_1
+  | Week_2
+  | Week_3
+  | Week_4
+  | Week_5
+
+let compare_week w1 w2 =
+  if w1 = w2 then
+    0
+  else (
+    match w1, w2 with
+    | Week_1, _ -> -1
+    | Week_2, Week_1 -> 1
+    | Week_2, _ -> -1
+    | Week_3, (Week_1 | Week_2) -> 1
+    | Week_3, _ -> -1
+    | Week_4, (Week_1 | Week_2 | Week_3) -> 1
+    | Week_4, _ -> -1
+    | Week_5, _ -> 1
+  )
+
 type datetime =
-  | UTCTimestamp of Datetime.fix_utctimestamp_micro
-  | UTCTimeOnly of Datetime.fix_utctimeonly_micro
-  | UTCDateOnly of Datetime.fix_utcdateonly
-  | LocalMktDate of Datetime.fix_localmktdate
-  | MonthYear of Datetime.fix_monthyear
-  | Duration of Datetime.fix_duration
+  | UTCTimestamp of T.t
+  | UTCTimeOnly of T.t
+  | UTCDateOnly of T.t
+  | LocalMktDate of T.t
+  | MonthYear of T.t * fix_week option
+  | Duration of T.Span.t
 
 type literal =
   | Bool of bool

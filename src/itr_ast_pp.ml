@@ -1,15 +1,67 @@
 open Format
 open Itr_ast
+module T = Imandra_ptime
+
+let ps_count_in_s = Z.of_int 1_000_000_000_000
+
+let s_count_in_day = 86_400
+
+let to_date_time_ps (t : T.t) =
+  let (y, m, d), ((hh, mm, ss), _tz) = T.to_date_time t in
+  let _d, ps = t |> T.to_span |> T.Span.to_d_ps in
+  let ps = Z.(ps mod ps_count_in_s) in
+  (y, m, d), (hh, mm, ss, ps)
+
+let timestamp_pp ppf (x : T.t) =
+  let (y, m, d), (hh, mm, ss, ps) = to_date_time_ps x in
+  fprintf ppf "%04d%02d%02d-%02d:%02d:%02d.%12d" (Z.to_int y) (Z.to_int m)
+    (Z.to_int d) (Z.to_int hh) (Z.to_int mm) (Z.to_int ss) (Z.to_int ps)
+
+let to_time_ps (t : T.t) =
+  let _date, time_ps = to_date_time_ps t in
+  time_ps
+
+let timeonly_pp ppf (x : T.t) =
+  let hh, mm, ss, ps = to_time_ps x in
+  fprintf ppf "%02d:%02d:%02d.%09d" (Z.to_int hh) (Z.to_int mm) (Z.to_int ss)
+    (Z.to_int ps)
+
+let dateonly_pp ppf (x : T.t) =
+  let y, m, d = T.to_date x in
+  fprintf ppf "%04d%02d%02d" (Z.to_int y) (Z.to_int m) (Z.to_int d)
+
+let week_to_string = function
+  | Week_1 -> "Week1"
+  | Week_2 -> "Week2"
+  | Week_3 -> "Week3"
+  | Week_4 -> "Week4"
+  | Week_5 -> "Week5"
+
+let monthyear_pp ppf ((t, w) : T.t * fix_week option) =
+  let y, m, d = T.to_date t in
+  fprintf ppf "%04d%02d%s" (Z.to_int y) (Z.to_int m)
+    (match w with
+    | Some w -> week_to_string w
+    | None -> Printf.sprintf "%02d" (Z.to_int d))
+
+let to_days_seconds (d : T.Span.t) =
+  ( Z.to_int (T.Span.to_int_s d) / s_count_in_day,
+    Z.to_int (T.Span.to_int_s d) mod s_count_in_day )
+
+let duration_pp ppf (x : T.span) =
+  let days, seconds = to_days_seconds x in
+  let hours = seconds / 3600 in
+  let minutes = seconds mod 3600 / 60 in
+  let seconds = seconds mod 3600 mod 60 in
+  fprintf ppf "D%dH%dM%dS%d" days hours minutes seconds
 
 let datetime_pp (ppf : formatter) : datetime -> unit = function
-  | UTCTimestamp d ->
-    fprintf ppf "%s" (Encode_datetime.encode_UTCTimestamp_micro d)
-  | UTCTimeOnly d ->
-    fprintf ppf "%s" (Encode_datetime.encode_UTCTimeOnly_micro d)
-  | UTCDateOnly d -> fprintf ppf "%s" (Encode_datetime.encode_UTCDateOnly d)
-  | LocalMktDate d -> fprintf ppf "%s" (Encode_datetime.encode_LocalMktDate d)
-  | MonthYear d -> fprintf ppf "%s" (Encode_datetime.encode_MonthYear d)
-  | Duration d -> fprintf ppf "%s" (Encode_datetime.encode_Duration d)
+  | UTCTimestamp d -> fprintf ppf "%a" timestamp_pp d
+  | UTCTimeOnly d -> fprintf ppf "%a" timeonly_pp d
+  | UTCDateOnly d -> fprintf ppf "%a" dateonly_pp d
+  | LocalMktDate d -> fprintf ppf "%a" dateonly_pp d
+  | MonthYear (d, w) -> fprintf ppf "%a" monthyear_pp (d, w)
+  | Duration d -> fprintf ppf "%a" duration_pp d
 
 let hof_type_pp (ppf : formatter) : hof_type -> unit = function
   | For_all -> fprintf ppf "forall"
