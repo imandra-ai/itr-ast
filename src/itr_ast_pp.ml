@@ -1,6 +1,7 @@
 open Format
 open Itr_ast
 module T = Imandra_ptime
+module TE = Imandra_ptime_extra
 
 let ps_count_in_s = Z.of_int 1_000_000_000_000
 
@@ -31,13 +32,13 @@ let dateonly_pp ppf (x : T.t) =
   fprintf ppf "%04d%02d%02d" (Z.to_int y) (Z.to_int m) (Z.to_int d)
 
 let week_to_string = function
-  | Week_1 -> "Week1"
-  | Week_2 -> "Week2"
-  | Week_3 -> "Week3"
-  | Week_4 -> "Week4"
-  | Week_5 -> "Week5"
+  | TE.Week_1 -> "Week1"
+  | TE.Week_2 -> "Week2"
+  | TE.Week_3 -> "Week3"
+  | TE.Week_4 -> "Week4"
+  | TE.Week_5 -> "Week5"
 
-let monthyear_pp ppf ((t, w) : T.t * fix_week option) =
+let monthyear_pp ppf ((t, w) : T.t * TE.week option) =
   let y, m, d = T.to_date t in
   fprintf ppf "%04d%02d%s" (Z.to_int y) (Z.to_int m)
     (match w with

@@ -1,6 +1,7 @@
 module I = Itr_ast
 module D = Decoders_yojson.Basic.Decode
 open Itr_ast_legacy_decoders
+module TE = Imandra_ptime_extra
 
 let version : int option ref = ref None
 
@@ -46,11 +47,11 @@ let week_decoder =
   let open D in
   let* w = string in
   match w with
-  | "Week1" -> succeed Itr_ast.Week_1
-  | "Week2" -> succeed Itr_ast.Week_2
-  | "Week3" -> succeed Itr_ast.Week_3
-  | "Week4" -> succeed Itr_ast.Week_4
-  | "Week5" -> succeed Itr_ast.Week_5
+  | "Week1" -> succeed TE.Week_1
+  | "Week2" -> succeed TE.Week_2
+  | "Week3" -> succeed TE.Week_3
+  | "Week4" -> succeed TE.Week_4
+  | "Week5" -> succeed TE.Week_5
   | x -> fail (x ^ " is not a valid Week encoding.")
 
 let datetime_decoder : I.datetime D.decoder =

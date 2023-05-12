@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/cloud-builders/git'
+    id: git-clone--submodules
+    entrypoint: '/bin/bash'
+    args:
+      - '-c'
+      - |
+        git submodule update --init
+  - name: 'gcr.io/cloud-builders/docker'
+    waitFor: ['git-clone--submodules']
+    id: 'build-docker'
+    entrypoint: '/bin/bash'
+    args:
+      - '-c'
+      - |
+        docker build -t itr-ast-build . --target itr-ast-build
+
+options:
+  machineType: 'N1_HIGHCPU_8'
