@@ -938,6 +938,26 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "List.take") && List.length args = 2 ->
+    (match args with
+    | [ n; a ] ->
+      (match evaluate_record_item n, evaluate_record_item a with
+      | ( Rec_value (Value (Literal (Int n))),
+          Rec_value (Value (Literal (Coll (ct, l)))) ) ->
+        Rec_value (Value (Literal (Coll (ct, CCList.take (Z.to_int n) l))))
+      | ( Rec_value (Value (Literal (Int n))),
+          Rec_repeating_group
+            { elements; message_template; num_in_group_field; name } ) ->
+        Rec_repeating_group
+          {
+            elements = CCList.take (Z.to_int n) elements;
+            message_template;
+            num_in_group_field;
+            name;
+          }
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "String.length")
          || (func = Literal (String "LString.length") && List.length args = 1)
     ->

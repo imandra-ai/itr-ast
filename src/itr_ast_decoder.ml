@@ -100,7 +100,6 @@ let hof_type_decoder : I.hof_type D.decoder =
   | "Map" -> succeed I.Map
   | "Filter" -> succeed I.Filter
   | "Find" -> succeed I.Find
-  | "Take" -> succeed I.Take
   | s -> fail @@ "unrecognised hof_type: " ^ s
 
 let coll_type_decoder : I.coll_type D.decoder =
