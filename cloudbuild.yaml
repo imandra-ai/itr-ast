@@ -5,6 +5,9 @@ steps:
     args:
       - '-c'
       - |
+        mkdir -pv "/root/.ssh"
+        ssh-keyscan -t rsa github.com > "/root/.ssh/known_hosts"
+        chmod 0644 "/root/.ssh/known_hosts"
         git submodule update --init
   - name: 'gcr.io/cloud-builders/docker'
     waitFor: ['git-clone--submodules']

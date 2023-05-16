@@ -35,6 +35,7 @@ let hof_type_to_json : hof_type -> t = function
   | Map -> `String "Map"
   | Filter -> `String "Filter"
   | Find -> `String "Find"
+  | Take -> `String "Take"
 
 let coll_type_to_json : coll_type -> t = function
   | Tuple -> `String "Tuple"

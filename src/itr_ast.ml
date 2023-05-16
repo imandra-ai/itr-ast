@@ -80,6 +80,7 @@ type hof_type =
   | Map
   | Filter
   | Find
+  | Take
 
 type coll_type =
   | Set
