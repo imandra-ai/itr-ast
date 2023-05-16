@@ -1,5 +1,7 @@
 module I = Itr_ast
 module D = Decoders_yojson.Basic.Decode
+open Itr_ast_legacy_decoders
+module TE = Imandra_ptime_extra
 
 let version : int option ref = ref None
 
@@ -21,27 +23,73 @@ let message_value_decoder : I.Message_value.t D.decoder =
   let mv : I.Message_value.t = { var; field_path } in
   succeed mv
 
+let span_decoder : Imandra_ptime.span D.decoder =
+  let open D in
+  D.list int >>= function
+  | [ d; ps ] ->
+    (match Imandra_ptime.Span.of_d_ps (Z.of_int d, Z.of_int ps) with
+    | Some s -> D.succeed s
+    | None -> D.fail "invalid time span")
+  | _ -> D.fail "expected [d, ps]"
+
+let ptime_decoder : Imandra_ptime.t D.decoder =
+  let open D in
+  one_of
+    [
+      ( "span_decoder",
+        span_decoder >>= fun s ->
+        match Imandra_ptime.of_span s with
+        | Some t -> succeed t
+        | None -> fail "invalid timestamp" );
+    ]
+
+let week_decoder =
+  let open D in
+  let* w = string in
+  match w with
+  | "Week1" -> succeed TE.Week_1
+  | "Week2" -> succeed TE.Week_2
+  | "Week3" -> succeed TE.Week_3
+  | "Week4" -> succeed TE.Week_4
+  | "Week5" -> succeed TE.Week_5
+  | x -> fail (x ^ " is not a valid Week encoding.")
+
 let datetime_decoder : I.datetime D.decoder =
   let open D in
   D.single_field (function
     | "UTCTimestamp" ->
-      let+ u = Datetime_json.utctimestamp_micro_decoder in
-      I.UTCTimestamp u
+      one_of
+        [
+          ( "ptime_decoder",
+            let+ d = ptime_decoder in
+            I.UTCTimestamp d );
+          ( "legacy_datetime",
+            let+ d = utctimestamp_micro_decoder in
+            I.UTCTimestamp d );
+        ]
     | "UTCTimeOnly" ->
-      let+ u = Datetime_json.utctimeonly_micro_decoder in
-      I.UTCTimeOnly u
+      one_of
+        [
+          ( "ptime_decoder",
+            let+ d = ptime_decoder in
+            I.UTCTimestamp d );
+          ( "legacy_datetime",
+            let+ d = utctimeonly_micro_decoder in
+            I.UTCTimeOnly d );
+        ]
     | "UTCDateOnly" ->
-      let+ u = Datetime_json.utcdateonly_decoder in
-      I.UTCDateOnly u
+      let+ d = ptime_decoder in
+      I.UTCDateOnly d
     | "LocalMktDate" ->
-      let+ u = Datetime_json.localmktdate_decoder in
-      I.LocalMktDate u
+      let+ d = ptime_decoder in
+      Itr_ast.LocalMktDate d
     | "MonthYear" ->
-      let+ u = Datetime_json.monthyear_decoder in
-      I.MonthYear u
+      let* t = field "t" ptime_decoder in
+      let+ week = maybe (field "week" week_decoder) in
+      Itr_ast.MonthYear (t, week)
     | "Duration" ->
-      let+ u = Datetime_json.duration_decoder in
-      I.Duration u
+      let+ d = span_decoder in
+      I.Duration d
     | s -> fail @@ "unrecognised datetime: " ^ s)
 
 let hof_type_decoder : I.hof_type D.decoder =

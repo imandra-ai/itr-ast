@@ -1,3 +1,6 @@
+module T = Imandra_ptime
+module TE = Imandra_ptime_extra
+
 module Map_extra (M : CCMap.S) = struct
   include M
 
@@ -84,12 +87,12 @@ type coll_type =
   | Tuple
 
 type datetime =
-  | UTCTimestamp of Datetime.fix_utctimestamp_micro
-  | UTCTimeOnly of Datetime.fix_utctimeonly_micro
-  | UTCDateOnly of Datetime.fix_utcdateonly
-  | LocalMktDate of Datetime.fix_localmktdate
-  | MonthYear of Datetime.fix_monthyear
-  | Duration of Datetime.fix_duration
+  | UTCTimestamp of T.t
+  | UTCTimeOnly of T.t
+  | UTCDateOnly of T.t
+  | LocalMktDate of T.t
+  | MonthYear of T.t * TE.week option
+  | Duration of T.Span.t
 
 type literal =
   | Bool of bool

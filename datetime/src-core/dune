@@ -1,6 +1,0 @@
-(library
- (name core)
- (public_name fix-engine.core)
- (wrapped false)
- (flags :standard -warn-error -A+8+39 -w -33-58)
- (libraries imandra-ptime imandra-ptime.extra imandra-prelude))

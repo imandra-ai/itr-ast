@@ -9,6 +9,6 @@
   decoders-yojson
   yojson
   zarith
-  fix-engine.core
-  fix-engine.core_pp
-  fix-engine.core_utils_pp))
+  imandra-ptime
+  imandra-ptime.extra
+  ptime.clock.os))

@@ -56,6 +56,10 @@ let failing_pretty_msg expr =
   fprintf str_formatter "%a" Itr_ast_pp.record_item_pp expr;
   flush_str_formatter ()
 
+let convert_to_dateonly (ts : T.t) : T.t =
+  let d, _ps = ts |> T.to_span |> T.Span.to_d_ps in
+  T.unsafe_of_d_ps (d, Z.zero)
+
 let rec replace_expr_in_expr e e_check e_replace =
   if e = e_check then
     e_replace
@@ -463,31 +467,31 @@ let check_cmp lhs rhs op =
         e_false
     | ( Value (Literal (Datetime (UTCTimestamp l))),
         Value (Literal (Datetime (UTCTimestamp r))) ) ->
-      if Datetime.utctimestamp_LessThan_micro_micro l r then
+      if T.compare l r < Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCTimeOnly l))),
         Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-      if Datetime.utctimeonly_LessThan_micro_micro l r then
+      if T.compare l r < Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCDateOnly l))),
         Value (Literal (Datetime (UTCDateOnly r))) ) ->
-      if Datetime.utcdateonly_LessThan l r then
+      if T.compare l r < Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (LocalMktDate l))),
         Value (Literal (Datetime (LocalMktDate r))) ) ->
-      if Datetime.localmktdate_LessThan l r then
+      if T.compare l r < Z.zero then
         e_true
       else
         e_false
-    | ( Value (Literal (Datetime (MonthYear l))),
-        Value (Literal (Datetime (MonthYear r))) ) ->
-      if Datetime.monthyear_LessThan l r then
+    | ( Value (Literal (Datetime (MonthYear (l, _w1)))),
+        Value (Literal (Datetime (MonthYear (r, _w2)))) ) ->
+      if T.compare l r < Z.zero then
         e_true
       else
         e_false
@@ -516,31 +520,31 @@ let check_cmp lhs rhs op =
         e_false
     | ( Value (Literal (Datetime (UTCTimestamp l))),
         Value (Literal (Datetime (UTCTimestamp r))) ) ->
-      if Datetime.utctimestamp_GreaterThan_micro_micro l r then
+      if T.compare l r > Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCTimeOnly l))),
         Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-      if Datetime.utctimeonly_GreaterThan_micro_micro l r then
+      if T.compare l r > Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCDateOnly l))),
         Value (Literal (Datetime (UTCDateOnly r))) ) ->
-      if Datetime.utcdateonly_GreaterThan l r then
+      if T.compare l r > Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (LocalMktDate l))),
         Value (Literal (Datetime (LocalMktDate r))) ) ->
-      if Datetime.localmktdate_GreaterThan l r then
+      if T.compare l r > Z.zero then
         e_true
       else
         e_false
-    | ( Value (Literal (Datetime (MonthYear l))),
-        Value (Literal (Datetime (MonthYear r))) ) ->
-      if Datetime.monthyear_GreaterThan l r then
+    | ( Value (Literal (Datetime (MonthYear (l, _w1)))),
+        Value (Literal (Datetime (MonthYear (r, _w2)))) ) ->
+      if T.compare l r > Z.zero then
         e_true
       else
         e_false
@@ -569,31 +573,31 @@ let check_cmp lhs rhs op =
         e_false
     | ( Value (Literal (Datetime (UTCTimestamp l))),
         Value (Literal (Datetime (UTCTimestamp r))) ) ->
-      if Datetime.utctimestamp_LessThanEqual_micro_micro l r then
+      if T.compare l r <= Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCTimeOnly l))),
         Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-      if Datetime.utctimeonly_LessThanEqual_micro_micro l r then
+      if T.compare l r <= Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCDateOnly l))),
         Value (Literal (Datetime (UTCDateOnly r))) ) ->
-      if Datetime.utcdateonly_LessThanEqual l r then
+      if T.compare l r <= Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (LocalMktDate l))),
         Value (Literal (Datetime (LocalMktDate r))) ) ->
-      if Datetime.localmktdate_LessThanEqual l r then
+      if T.compare l r <= Z.zero then
         e_true
       else
         e_false
-    | ( Value (Literal (Datetime (MonthYear l))),
-        Value (Literal (Datetime (MonthYear r))) ) ->
-      if Datetime.monthyear_LessThanEqual l r then
+    | ( Value (Literal (Datetime (MonthYear (l, _w1)))),
+        Value (Literal (Datetime (MonthYear (r, _w2)))) ) ->
+      if T.compare l r <= Z.zero then
         e_true
       else
         e_false
@@ -622,31 +626,31 @@ let check_cmp lhs rhs op =
         e_false
     | ( Value (Literal (Datetime (UTCTimestamp l))),
         Value (Literal (Datetime (UTCTimestamp r))) ) ->
-      if Datetime.utctimestamp_GreaterThanEqual_micro_micro l r then
+      if T.compare l r >= Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCTimeOnly l))),
         Value (Literal (Datetime (UTCTimeOnly r))) ) ->
-      if Datetime.utctimeonly_GreaterThanEqual_micro_micro l r then
+      if T.compare l r >= Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (UTCDateOnly l))),
         Value (Literal (Datetime (UTCDateOnly r))) ) ->
-      if Datetime.utcdateonly_GreaterThanEqual l r then
+      if T.compare l r >= Z.zero then
         e_true
       else
         e_false
     | ( Value (Literal (Datetime (LocalMktDate l))),
         Value (Literal (Datetime (LocalMktDate r))) ) ->
-      if Datetime.localmktdate_GreaterThanEqual l r then
+      if T.compare l r >= Z.zero then
         e_true
       else
         e_false
-    | ( Value (Literal (Datetime (MonthYear l))),
-        Value (Literal (Datetime (MonthYear r))) ) ->
-      if Datetime.monthyear_GreaterThanEqual l r then
+    | ( Value (Literal (Datetime (MonthYear (l, _w1)))),
+        Value (Literal (Datetime (MonthYear (r, _w2)))) ) ->
+      if T.compare l r >= Z.zero then
         e_true
       else
         e_false
@@ -784,10 +788,10 @@ let rec eval_add_datetime dt1 op dt2 =
     | UTCTimestamp t ->
       let ts =
         match op with
-        | '+' -> Datetime.utctimestamp_micro_duration_Add t dur
+        | '+' -> T.add_span t dur |> CCOption.get_or ~default:t
         | '-' ->
-          Datetime.utctimestamp_micro_duration_Add t
-            (Imandra_ptime.Span.neg dur)
+          T.add_span t (Imandra_ptime.Span.neg dur)
+          |> CCOption.get_or ~default:t
         | _ -> failwith "Unknown Add operator"
       in
       Rec_value (Value (Literal (Datetime (UTCTimestamp ts))))
@@ -1046,11 +1050,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match evaluate_record_item date with
       | Rec_value (Value (Literal (Datetime (UTCTimestamp t)))) ->
         Rec_value
-          (Value
-             (Literal
-                (Datetime
-                   (UTCDateOnly
-                      (Datetime.convert_utctimestamp_micro_utcdateonly t)))))
+          (Value (Literal (Datetime (UTCDateOnly (convert_to_dateonly t)))))
       | Rec_value (Value (MessageValue mv)) ->
         Rec_value
           (Value
@@ -1067,9 +1067,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     when func = Literal (String "date") && args = [] ->
     Rec_value
       (Value
-         (Literal
-            (Datetime
-               (UTCTimestamp (Current_time.get_current_utctimestamp_micro ())))))
+         (Literal (Datetime (UTCTimestamp (Ptime_clock.now () |> T.of_ptime)))))
   | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "timestamp_to_dateonly") && List.length args = 1
     ->
@@ -1078,11 +1076,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match evaluate_record_item a with
       | Rec_value (Value (Literal (Datetime (UTCTimestamp t)))) ->
         Rec_value
-          (Value
-             (Literal
-                (Datetime
-                   (UTCDateOnly
-                      (Datetime.convert_utctimestamp_micro_utcdateonly t)))))
+          (Value (Literal (Datetime (UTCDateOnly (convert_to_dateonly t)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
@@ -1093,11 +1087,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match evaluate_record_item a with
       | Rec_value (Value (Literal (Datetime (UTCTimestamp t)))) ->
         Rec_value
-          (Value
-             (Literal
-                (Datetime
-                   (LocalMktDate
-                      (Datetime.convert_utctimestamp_micro_localmktdate t)))))
+          (Value (Literal (Datetime (LocalMktDate (convert_to_dateonly t)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
