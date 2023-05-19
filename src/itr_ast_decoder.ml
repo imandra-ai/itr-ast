@@ -25,9 +25,9 @@ let message_value_decoder : I.Message_value.t D.decoder =
 
 let span_decoder : Imandra_ptime.span D.decoder =
   let open D in
-  D.list int >>= function
+  D.list string >>= function
   | [ d; ps ] ->
-    (match Imandra_ptime.Span.of_d_ps (Z.of_int d, Z.of_int ps) with
+    (match Imandra_ptime.Span.of_d_ps (Z.of_string d, Z.of_string ps) with
     | Some s -> D.succeed s
     | None -> D.fail "invalid time span")
   | _ -> D.fail "expected [d, ps]"

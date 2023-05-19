@@ -5,7 +5,7 @@ module JU = Yojson.Basic.Util
 
 let span_to_json (s : T.span) =
   let d, ps = T.Span.to_d_ps s in
-  `List [ `Int (Z.to_int d); `Int (Z.to_int ps) ]
+  `List [ `String (Z.to_string d); `String (Z.to_string ps) ]
 
 let ptime_to_json (t : T.t) = span_to_json (T.to_span t)
 
