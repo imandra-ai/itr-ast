@@ -5,6 +5,13 @@ module TE = Imandra_ptime_extra
 
 let ps_count_in_s = Z.of_int 1_000_000_000_000
 
+let pp_bullet_list pp1 pp2 =
+  CCFormat.(
+    vbox
+      (list
+         (fun fmt (x, y) -> fprintf fmt "%a: - %a" (hvbox ~i:2 pp1) x pp2 y)
+         ~sep:(return "@,")))
+
 let s_count_in_day = 86_400
 
 let to_date_time_ps (t : T.t) =
@@ -110,9 +117,9 @@ and value_pp (ppf : formatter) : value -> unit = function
       CCFormat.(list ~sep:(return ",") record_item_pp)
       args
   | CaseSplit { default_value; cases } ->
-    fprintf ppf "cases(%a@,default:%a)"
-      CCFormat.(list ~sep:(return "@,") case_split_pair_pp)
-      cases record_item_pp default_value
+    fprintf ppf "%a"
+      (pp_bullet_list record_item_pp record_item_pp)
+      ((default_value, Rec_value (Value (Literal (String "default")))) :: cases)
   | DataSetValue { name; field_name; default; constraints } ->
     fprintf ppf "dataset_value(%s,%s,%a) where [%a]" name field_name
       record_item_pp default
