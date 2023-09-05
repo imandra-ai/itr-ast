@@ -1,0 +1,75 @@
+<html lang="en">
+<head>
+<title>Itr printing tests</title>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+
+<!-- add basic CodeMirror functionality -->
+<link rel="stylesheet" href="js/codemirror-5.65.15/lib/codemirror.css" />
+<script src="js/codemirror-5.65.15/lib/codemirror.js" type="text/javascript" charset="utf-8"></script>
+<script src="js/codemirror-5.65.15/addon/mode/simple.js"></script>
+<script src="js/imandraTestScriptMode.js" type="text/javascript" charset="utf-8"></script>
+<style type="text/css" media="screen">
+
+    #container {
+        padding: 15px;
+    }
+    h5 {
+        margin: 7px 0px;
+    }
+    #editor-pane
+    {
+        position:relative;
+        display: block;
+        width: 800px;
+        height: 800px;
+        border: solid 1px #bbb;
+    }
+
+    #editor
+    {
+        font-size: 9pt;
+    }
+
+    #editor .CodeMirror {
+        height: 798px;
+    }
+
+
+
+</style>
+</head>
+<body>
+<div id="container">
+
+
+ <h5>Itr editor</h5>
+ <div id="editor-pane">
+   <div id="editor"></div>
+ </div>
+
+</div>
+
+<script type="text/javascript">
+
+
+
+$(document).ready(function () {
+
+    window.codemirror1 = CodeMirror($('#editor').get(0), {
+        mode:  "imandraTestScript",
+        value: "",
+        readOnly: false,
+        styleActiveLine: true,
+        lineNumbers: true,
+   });
+
+
+});
+
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,143 @@
+
+set event_0 = {
+  
+}
+set msg_data = 
+set fresh_timestamp_1 = "date"()
+set fresh_timestamp_2 = "date"()
+receive msg_1 where MsgType = "D"
+  expecting {
+    Symbol = "ZVZZT"
+    OrdType = "2"
+    Price > 0
+    (OrderQty > 0) && (OrderQty <= 10000000)
+    (0 < "LString.length"(ClOrdID)) && ("LString.length"(ClOrdID) <= 32)
+    (0 < "LString.length"(Symbol)) && ("LString.length"(Symbol) <= 32)
+    ((((LocateReqd = Some "N") && (Side = "6")) || !(Side = "6")) && !(Side = "5")) || ((LocateReqd = Some "N") && (Side = "5"))
+    (!"IsSet"(ExpireTime) && !(TimeInForce = "6")) || ((TimeInForce = "6") && "IsSet"(ExpireTime))
+    "IsSet"(Price)
+    ExecInst in {Some "t",Some "M",Some "R",Some "P",None}
+    (((!"IsSet"(LocateReqd) && !(Side = "6")) || (Side = "6")) && !(Side = "5")) || (Side = "5")
+    ("IsSet"(ExpireTime) && ((ExpireTime >= "FormatDate"($fresh_timestamp_1,"yyyyMMdd-HH:mm:ss.SSS")) && ("FormatDate"(ExpireTime,"yyyyMMdd") = "FormatDate"($fresh_timestamp_2,"yyyyMMdd")))) || !"IsSet"(ExpireTime)
+    ((MinQty > 0) && "IsSet"(MinQty)) || !"IsSet"(MinQty)
+    ((OrderQty >= MinQty) && "IsSet"(MinQty)) || !"IsSet"(MinQty)
+    !"IsSet"(PegDifference)
+    !"IsSet"(SymbolSfx)
+    "IsSet"(ExpressiveBiddingPayloadType) = "IsSet"(ExpressiveBiddingPayload)
+    !"IsSet"(ExecInst)
+    !"IsSet"(ExpressiveBiddingPayloadType)
+    !"IsSet"(ExpressiveBiddingPayload)
+    !(TimeInForce = "4") || ((!"IsSet"(MinQty) && (TimeInForce = "4")) || ("IsSet"(MinQty) && ((OrderQty = MinQty) && (TimeInForce = "4"))))
+    (((SelfMatchPreventionID >= 0) && (SelfMatchPreventionID <= 65535)) && "IsSet"(SelfMatchPreventionID)) || !"IsSet"(SelfMatchPreventionID)
+    ((32 >= "LString.length"(CustomerID)) && "IsSet"(CustomerID)) || !"IsSet"(CustomerID)
+    ((32 >= "LString.length"(AnalyticsTags)) && "IsSet"(AnalyticsTags)) || !"IsSet"(AnalyticsTags)
+    ((32 >= "LString.length"(Account)) && "IsSet"(Account)) || !"IsSet"(Account)
+  }
+set fresh_string_2 = "randInt"(1000,9999)
+set fresh_string_1 = "randInt"(1000,9999)
+send msg_1_0 = (ExecutionReport) {
+  Account = msg_1.Account;
+  AnalyticsTags = msg_1.AnalyticsTags;
+  AuctionID = None;
+  AuctionSubID = None;
+  AvgPx = 0;
+  CancelReason = None;
+  ClOrdID = msg_1.ClOrdID;
+  ContraBroker = None;
+  CumQty = 0;
+  CustomerID = msg_1.CustomerID;
+  ExecID = "randInt"(1000,9999);
+  ExecInst = msg_1.ExecInst;
+  ExecTransType = "0";
+  ExecType = "0";
+  ExpireTime = msg_1.ExpireTime;
+  LastMkt = None;
+  LastPx = Some 0;
+  LastShares = Some 0;
+  LeavesQty = msg_1.OrderQty;
+  MinQty = msg_1.MinQty;
+  NoContraBrokers = None;
+  OrdRejReason = None;
+  OrdStatus = "0";
+  OrdType = msg_1.OrdType;
+  OrderID = "randInt"(1000,9999);
+  OrderQty = msg_1.OrderQty;
+  OrigClOrdID = None;
+  PegDifference = msg_1.PegDifference;
+  Price = msg_1.Price;
+  Rule80A = msg_1.Rule80A;
+  SelfMatchPreventionID = msg_1.SelfMatchPreventionID;
+  Side = msg_1.Side;
+  Symbol = msg_1.Symbol;
+  SymbolSfx = msg_1.SymbolSfx;
+  TargetOrderID = None;
+  Text = None;
+  TimeInForce = msg_1.TimeInForce;
+  TransactTime = "FormatDate"($fresh_timestamp_1,"yyyyMMdd-HH:mm:ss.SSS");
+}
+set msg_data = 
+receive msg_2 where MsgType = "G"
+  expecting {
+    OrdType = "2"
+    "IsSet"(Price)
+    (!"IsSet"(ExecInst) && !"IsSet"(msg_1.ExecInst)) || (ExecInst = msg_1.ExecInst)
+    (!"IsSet"(ExpireTime) && !"IsSet"(msg_1.ExpireTime)) || (ExpireTime = msg_1.ExpireTime)
+    (!"IsSet"(ExpressiveBiddingPayloadType) && !"IsSet"(msg_1.ExpressiveBiddingPayloadType)) || (ExpressiveBiddingPayloadType = msg_1.ExpressiveBiddingPayloadType)
+    OrdType = msg_1.OrdType
+    Rule80A = msg_1.Rule80A
+    Side = msg_1.Side
+    Symbol = msg_1.Symbol
+    (!"IsSet"(SymbolSfx) && !"IsSet"(msg_1.SymbolSfx)) || (SymbolSfx = msg_1.SymbolSfx)
+    TimeInForce = msg_1.TimeInForce
+    !(ClOrdID = msg_1.ClOrdID)
+    OrigClOrdID = msg_1.ClOrdID
+    (0 < "LString.length"(ClOrdID)) && ("LString.length"(ClOrdID) <= 32)
+    (0 < "LString.length"(OrigClOrdID)) && ("LString.length"(OrigClOrdID) <= 32)
+    (((0 < msg_1.OrderQty) && (msg_1.OrderQty <= 10000000)) && "IsSet"(msg_1.OrderQty)) || (((OrderQty > 0) && (OrderQty <= 10000000)) && !"IsSet"(msg_1.OrderQty))
+    !"IsSet"(PegDifference)
+    "IsSet"(ExpressiveBiddingPayloadType) = "IsSet"(ExpressiveBiddingPayload)
+    !"IsSet"(Account)
+    !"IsSet"(AnalyticsTags)
+    !"IsSet"(MinQty)
+  }
+set fresh_string_4 = "randInt"(1000,9999)
+send msg_2_0 = (ExecutionReport) {
+  Account = msg_1.Account;
+  AnalyticsTags = msg_1.AnalyticsTags;
+  AuctionID = None;
+  AuctionSubID = None;
+  AvgPx = 0;
+  CancelReason = None;
+  ClOrdID = msg_2.ClOrdID;
+  ContraBroker = None;
+  CumQty = 0;
+  CustomerID = None;
+  ExecID = "randInt"(1000,9999);
+  ExecInst = msg_1.ExecInst;
+  ExecTransType = "0";
+  ExecType = "5";
+  ExpireTime = msg_1.ExpireTime;
+  LastMkt = None;
+  LastPx = Some 0;
+  LastShares = Some 0;
+  LeavesQty = "defaultIfNotSet"(msg_1.OrderQty,msg_2.OrderQty);
+  MinQty = msg_1.MinQty;
+  NoContraBrokers = None;
+  OrdRejReason = None;
+  OrdStatus = "5";
+  OrdType = msg_1.OrdType;
+  OrderID = msg_1_0.OrderID;
+  OrderQty = "defaultIfNotSet"(msg_1.OrderQty,msg_2.OrderQty);
+  OrigClOrdID = Some msg_2.OrigClOrdID;
+  PegDifference = msg_1.PegDifference;
+  Price = msg_2.Price;
+  Rule80A = msg_1.Rule80A;
+  SelfMatchPreventionID = None;
+  Side = msg_1.Side;
+  Symbol = msg_1.Symbol;
+  SymbolSfx = msg_1.SymbolSfx;
+  TargetOrderID = None;
+  Text = None;
+  TimeInForce = msg_1.TimeInForce;
+  TransactTime = "FormatDate"($fresh_timestamp_2,"yyyyMMdd-HH:mm:ss.SSS");
+}
