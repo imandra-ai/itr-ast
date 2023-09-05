@@ -18,6 +18,10 @@ deps: _opam
 build: _opam
 	opam exec -- dune build @install
 
+.PHONY: test
+test:
+	opam exec -- dune test
+
 .PHONY: install
 install: build
 	opam exec -- dune install

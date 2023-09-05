@@ -7,3 +7,4 @@ COPY --chown=opam:nogroup ./Makefile ./Makefile
 COPY --chown=opam:nogroup . .
 RUN make deps
 RUN make build
+RUN make test
