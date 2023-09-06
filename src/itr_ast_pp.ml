@@ -9,7 +9,8 @@ let pp_bullet_list pp1 pp2 =
   CCFormat.(
     vbox
       (list
-         (fun fmt (x, y) -> fprintf fmt "%a: - %a" (hvbox ~i:2 pp1) x pp2 y)
+         (fun fmt (x, y) ->
+           fprintf fmt "%a: - %a" (hvbox ~i:2 pp1) x (hvbox ~i:2 pp2) y)
          ~sep:(return "@,")))
 
 let s_count_in_day = 86_400
@@ -119,7 +120,7 @@ and value_pp (ppf : formatter) : value -> unit = function
   | CaseSplit { default_value; cases } ->
     fprintf ppf "%a"
       (pp_bullet_list record_item_pp record_item_pp)
-      ((default_value, Rec_value (Value (Literal (String "default")))) :: cases)
+      (cases @ [ Rec_value (Value (Literal (String "default"))), default_value ])
   | DataSetValue { name; field_name; default; constraints } ->
     fprintf ppf "dataset_value(%s,%s,%a) where [%a]" name field_name
       record_item_pp default
@@ -249,20 +250,28 @@ and exprs_pp fmt (exprs : expr list) =
 let instructions_pp = CCFormat.(vbox (list instruction_pp ~sep:(return "@,")))
 
 let gen_pp filename =
- let open Decoders_yojson.Basic.Decode in
+  let open Decoders_yojson.Basic.Decode in
   let cwd = Sys.getcwd () in
-  if String.length filename < 6 then failwith "not long enough to be a json file name" else
-  let json_ext =  String.sub filename ((String.length filename) - 4) 4 in
-  if json_ext <> "json" then failwith "Not a json extension"
-  else let base_filename = String.sub filename 0 (String.length filename - 5) in
-  let instructions = decode_file (field "instructions" (list (Itr_ast_decoder.instruction_decoder ())))
-  (CCFormat.sprintf "%s/%s" cwd filename) in
-  match instructions with
-  | Ok instructions ->
-      let pp_string = CCFormat.sprintf "%a" instructions_pp instructions in
-      let filename = CCFormat.sprintf "%s.out" base_filename in
-      let oc = open_out filename in
-      Printf.fprintf oc "%s\n" pp_string;
-      close_out oc
-  | Error e -> failwith (string_of_error e)
-
+  if String.length filename < 6 then
+    failwith "not long enough to be a json file name"
+  else (
+    let json_ext = String.sub filename (String.length filename - 4) 4 in
+    if json_ext <> "json" then
+      failwith "Not a json extension"
+    else (
+      let base_filename = String.sub filename 0 (String.length filename - 5) in
+      let instructions =
+        decode_file
+          (field "instructions" (list (Itr_ast_decoder.instruction_decoder ())))
+          (CCFormat.sprintf "%s/%s" cwd filename)
+      in
+      match instructions with
+      | Ok instructions ->
+        let pp_string = CCFormat.sprintf "%a" instructions_pp instructions in
+        let filename = CCFormat.sprintf "%s.out" base_filename in
+        let oc = open_out filename in
+        Printf.fprintf oc "%s\n" pp_string;
+        close_out oc
+      | Error e -> failwith (string_of_error e)
+    )
+  )

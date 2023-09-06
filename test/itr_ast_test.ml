@@ -7,3 +7,6 @@ let () = Itr_ast_pp.gen_pp "test2.json"
 
 let () = Itr_ast_pp.gen_pp "test3.json"
 
+let () = Itr_ast_pp.gen_pp "test4.json"
+
+

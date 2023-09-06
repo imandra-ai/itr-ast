@@ -25,6 +25,7 @@
    test1.out
    test2.out
    test3.out
+   test4.out
   )(deps
   (glob_files *.json)))
 
