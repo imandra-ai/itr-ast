@@ -9,10 +9,18 @@
  (public_name itr_ast_test)
  (modules itr_ast_test)
  (flags :standard -warn-error -A+8+39 -w -33-58)
+ (modules itr_ast_test)
  (libraries
-  decoders
-  decoders-yojson
   itr-ast))
+
+(executable
+ (name pp)
+ (package itr-ast)
+ (public_name pp)
+ (flags :standard -warn-error -A+8+39 -w -33-58)
+ (modules
+  pp)
+  (libraries itr-ast))
 
 (rule
  (alias runtest)
