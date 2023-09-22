@@ -1,0 +1,59 @@
+Record with repeating group:
+  {
+    NoPartyIDs
+      [
+        {
+          Instrument {
+            Symbol = "UK123";
+          }
+          PartyID = "1";
+          Something = "2";
+        }
+        {
+          PartyID = "2";
+          Something = "3";
+          NoSubIDs
+            [
+              {
+                SubID = "23";
+              }
+            ]
+        }
+      ]
+  }
+
+Receive:
+  receive msg4 where true
+    expecting {
+      ClOrdID = ""
+      CxlRejResponseTo = "1"
+      OrdStatus = "0"
+    }
+
+expecting (no var):
+  receive msg4 where MsgType = "8"
+    expecting {
+      ClOrdID = ""
+    }
+
+flatten_record:
+  Parties, NoPartyIDs[0], Something -> "2",
+  Parties, NoPartyIDs[0], PartyID -> "1",
+  Parties, NoPartyIDs[0], Instrument, Symbol -> "UK123",
+  Parties, NoPartyIDs[1], SubGrp, NoSubIDs[0], SubID -> "23",
+  Parties, NoPartyIDs[1], Something -> "3",
+  Parties, NoPartyIDs[1], PartyID -> "2",
+  Instrument, Symbol -> "GB123"
+
+flatten_record ~qualify_records=false:
+  Parties, NoPartyIDs[0], Something -> "2",
+  Parties, NoPartyIDs[0], PartyID -> "1",
+  Parties, NoPartyIDs[0], Symbol -> "UK123",
+  Parties, NoPartyIDs[1], SubGrp, NoSubIDs[0], SubID -> "23",
+  Parties, NoPartyIDs[1], Something -> "3",
+  Parties, NoPartyIDs[1], PartyID -> "2",
+  Symbol -> "GB123"
+
+concat:
+  "one, two, three"
+
