@@ -1,3 +1,9 @@
+(tests
+ (names ast_pp_test)
+ (modules ast_pp_test)
+ (modes byte)
+ (libraries itr-ast))
+
 (executable
  (name itr_ast_test)
  (package itr-ast)
