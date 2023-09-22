@@ -1,7 +1,6 @@
 (tests
  (names ast_pp_test)
  (modules ast_pp_test)
- (modes byte)
  (libraries itr-ast))
 
 (executable
