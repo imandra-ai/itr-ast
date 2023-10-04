@@ -811,8 +811,14 @@ let rec evaluate_record_item (context : 'a context) (e : record_item) :
         name;
         elements = String_map.map (evaluate_record_item context) elements;
       }
-  (* TODO simplification of repeating group structures *)
-  | _ -> e
+  | Rec_repeating_group {name;elements;num_in_group_field;message_template} ->
+    Rec_repeating_group {
+      name;
+      elements = CCList.map (fun {name;elements} ->
+        {name;elements= String_map.map (evaluate_record_item context) elements}) elements;
+      num_in_group_field;
+      message_template
+    }
 
 and evaluate_expr (context : 'a context) (e : expr) : record_item =
   let evaluate_expr = evaluate_expr context in
@@ -823,7 +829,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     when func = Literal (String "IsSet") && List.length args = 1 ->
     evaluate_expr
       (Eq
-         { lhs = CCList.hd args; rhs = Rec_value (Value (Literal LiteralNone)) })
+         { lhs = evaluate_record_item (CCList.hd args); rhs = Rec_value (Value (Literal LiteralNone)) })
   | Value (CaseSplit { default_value; cases }) ->
     CCResult.fold_l
       (fun acc (check, value) ->
@@ -1002,6 +1008,13 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       evaluate_expr
         (Not (Eq { lhs = a; rhs = Rec_value (Value (Literal LiteralNone)) }))
     | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "implies") && List.length args = 2 ->
+      (match CCList.map evaluate_record_item args with
+      | [ Rec_value lhs;Rec_value rhs ] ->
+        evaluate_expr
+          (Or { lhs = Not lhs; rhs})
+      | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "defaultIfNotSet") && List.length args = 2 ->
     (match args with
