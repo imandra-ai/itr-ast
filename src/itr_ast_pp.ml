@@ -113,6 +113,10 @@ and value_pp (ppf : formatter) : value -> unit = function
   | ObjectProperty op ->
     fprintf ppf "%a%a.%s" record_item_pp_parens op.obj opt_index_pp op.index
       op.prop
+  | Funcall { func = Literal (String func); args } ->
+    fprintf ppf "%s(%a)" func
+      CCFormat.(list ~sep:(return ",") record_item_pp)
+      args
   | Funcall { func; args } ->
     fprintf ppf "%a(%a)" value_pp func
       CCFormat.(list ~sep:(return ",") record_item_pp)
