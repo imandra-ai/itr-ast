@@ -39,6 +39,11 @@ type 'a context = {
   field_presence_map: field_presence_map;
 }
 
+let empty_context = {
+  static_context = None;
+  field_presence_map = Field_path_map.empty
+}
+
 let msg_or_expr_pp (ppf : Format.formatter) : 'a msg_or_expr -> unit =
   let open Format in
   function

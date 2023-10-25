@@ -123,7 +123,13 @@ and value_pp (ppf : formatter) : value -> unit = function
       args
   | CaseSplit { default_value; cases } ->
     fprintf ppf "%a"
-      (pp_bullet_list record_item_pp record_item_pp)
+      (pp_bullet_list
+         (fun ppf x ->
+           match x with
+           | Rec_value (Value (Literal (String "default"))) ->
+             CCFormat.fprintf ppf "%s" "default"
+           | _ -> CCFormat.fprintf ppf "%a" record_item_pp x)
+         record_item_pp)
       (cases @ [ Rec_value (Value (Literal (String "default"))), default_value ])
   | DataSetValue { name; field_name; default; constraints } ->
     fprintf ppf "dataset_value(%s,%s,%a) where [%a]" name field_name
