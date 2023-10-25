@@ -843,17 +843,32 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
            rhs = Rec_value (Value (Literal LiteralNone));
          })
   | Value (CaseSplit { default_value; cases }) ->
-    CCResult.fold_l
-      (fun acc (check, value) ->
-        if is_true (evaluate_record_item check) then
-          Error (`GotResult (evaluate_record_item value))
-        else
-          Ok acc)
-      (evaluate_record_item default_value)
-      cases
-    |> ( function
-    | Ok res -> res
-    | Error (`GotResult ri) -> ri )
+    let default_value = evaluate_record_item default_value in
+    let cases =
+      CCList.map
+        (fun (k, v) -> evaluate_record_item k, evaluate_record_item v)
+        cases
+    in
+    let simplified_input =
+      Rec_value (Value (CaseSplit { default_value; cases }))
+    in
+    let case_result =
+      CCResult.fold_l
+        (fun acc (check, value) ->
+          if is_true (evaluate_record_item check) then
+            Error (`GotResult (evaluate_record_item value))
+          else
+            Ok acc)
+        (evaluate_record_item default_value)
+        cases
+    in
+    (match case_result with
+    | Ok res ->
+      if CCList.for_all is_false (CCList.map fst cases) then
+        res
+      else
+        simplified_input
+    | Error (`GotResult ri) -> ri)
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
