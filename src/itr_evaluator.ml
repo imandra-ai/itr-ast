@@ -382,7 +382,7 @@ and replace_expr_in_record_item ri (e_check : expr) (e_replace : expr) =
               })
             elements;
       }
-
+(** replace : ri -> check -> replace -> ri *)
 and replace_record_item_in_record_item ri (e_check : record_item)
     (e_replace : record_item) =
   if ri = e_check then
@@ -954,7 +954,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | Rec_value lhs, Rec_value rhs -> check_cmp lhs rhs op
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "String.length") && List.length args = 1 ->
+    when (func = Literal (String "LString.length")||func = Literal (String "String.length")||func = Literal (String "len")) && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -963,7 +963,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "List.length") && List.length args = 1 ->
+    when (func = Literal (String "List.length")||func = Literal (String "len")) && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -974,7 +974,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "List.take") && List.length args = 2 ->
+    when (func = Literal (String "List.take")|| func = Literal (String "take")) && List.length args = 2 ->
     (match args with
     | [ n; a ] ->
       (match evaluate_record_item n, evaluate_record_item a with
@@ -994,8 +994,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "String.length")
-         || (func = Literal (String "LString.length") && List.length args = 1)
+    when ((func = Literal (String "String.length")
+         || func = Literal (String "LString.length")
+         || func = Literal (String "len")) && List.length args = 1)
     ->
     (match args with
     | [ a ] ->
@@ -1005,7 +1006,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "List.hd") && List.length args = 1 ->
+    when (func = Literal (String "List.hd")|| func = Literal (String "hd")) && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1017,7 +1018,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "List.tl") && List.length args = 1 ->
+    when (func = Literal (String "List.tl")||func=Literal(String "tl")) && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1091,7 +1092,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                (Funcall { func; args = CCList.map evaluate_record_item args })))
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "Set.subset") && List.length args = 2 ->
+    when (func = Literal (String "Set.subset") || func = Literal (String ("subset"))) && List.length args = 2 ->
     (match args with
     | [ l; r ] ->
       let l = evaluate_record_item l in
@@ -1488,12 +1489,47 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | _ -> Rec_value e)
   | _ -> Rec_value e
 
-and fix_evaluate_record_item context record_item =
+and normalise_to_is_set record_item =
+    match record_item with
+    | Rec_value expr ->
+      Rec_value (walk (function
+      | Eq
+      {
+        lhs;
+        rhs = Rec_value (Value (Literal LiteralNone));
+      } -> Not (Value (Funcall {func=Literal (String "IsSet");args=[lhs]}))
+      | Eq
+      {
+        lhs = Rec_value (Value (Literal LiteralNone));
+        rhs;
+      } -> Not (Value (Funcall {func=Literal (String "IsSet");args=[rhs]}))
+      | Not (Eq
+      {
+        lhs;
+        rhs = Rec_value (Value (Literal LiteralNone));
+      }) -> Value (Funcall {func=Literal (String "IsSet");args=[lhs]})
+      | Not (Eq
+      {
+        lhs = Rec_value (Value (Literal LiteralNone));
+        rhs;
+      })->  Value (Funcall {func=Literal (String "IsSet");args=[rhs]})
+      | e -> e) expr)
+    | Rec_record {name;elements} -> Rec_record {name;elements = String_map.map normalise_to_is_set elements}
+    | Rec_repeating_group { name;
+    message_template;
+    num_in_group_field;
+    elements: record list;} -> Rec_repeating_group {name;message_template;num_in_group_field;elements = CCList.map (function {name;elements} ->
+      {name;elements =String_map.map normalise_to_is_set elements}
+      ) elements}
+
+and fix_evaluate_record_item context
+  record_item =
   let res = evaluate_record_item context record_item in
   if res = record_item then
-    record_item
+    normalise_to_is_set record_item
   else
     evaluate_record_item context res
+
 
 let fix_evaluate_constraints context constraints =
   CCList.map (fix_evaluate_record_item context) constraints
