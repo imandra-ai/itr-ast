@@ -383,7 +383,8 @@ and replace_expr_in_record_item ri (e_check : expr) (e_replace : expr) =
             elements;
       }
 (** replace : ri -> check -> replace -> ri *)
-and replace_record_item_in_record_item ri (e_check : record_item)
+and
+replace_record_item_in_record_item ri (e_check : record_item)
     (e_replace : record_item) =
   if ri = e_check then
     e_replace
@@ -1528,7 +1529,7 @@ and fix_evaluate_record_item context
   if res = record_item then
     normalise_to_is_set record_item
   else
-    evaluate_record_item context res
+    fix_evaluate_record_item context res
 
 
 let fix_evaluate_constraints context constraints =

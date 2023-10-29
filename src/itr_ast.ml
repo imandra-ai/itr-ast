@@ -225,7 +225,7 @@ and record_item_eq i1 i2 =
 and record_eq r1 r2 =
   r1.name = r2.name && String_map.equal record_item_eq r1.elements r2.elements
 
-let map_value ~map_record_item = function
+let rec map_value ~map_record_item = function
   | ObjectProperty { obj; index; prop } ->
     ObjectProperty { obj = map_record_item obj; index; prop }
   | Funcall { func; args } ->
@@ -237,6 +237,37 @@ let map_value ~map_record_item = function
          ( map_record_item d,
            List.map (fun (l, r) -> map_record_item l, map_record_item r) l ))
   | Literal (LiteralSome ri) -> Literal (LiteralSome (map_record_item ri))
+  | CaseSplit
+      { default_value : record_item; cases : (record_item * record_item) list }
+    ->
+    CaseSplit
+      {
+        default_value = map_record_item default_value;
+        cases =
+          CCList.map (fun (c, v) -> map_record_item c, map_record_item v) cases;
+      }
+  | DataSetValue
+      {
+        name : string;
+        field_name : string;
+        default : record_item;
+        constraints : record_item list;
+      } ->
+    DataSetValue
+      {
+        name;
+        field_name;
+        default = map_record_item default;
+        constraints = CCList.map map_record_item constraints;
+      }
+  | Hof { hof_type : hof_type; lambda_args : value list; body : record_item } ->
+    Hof
+      {
+        hof_type;
+        lambda_args =
+          CCList.map (fun a -> map_value ~map_record_item a) lambda_args;
+        body = map_record_item body;
+      }
   | v -> v
 
 let map_expr ~map_expr:f ~map_value ~map_record_item = function
