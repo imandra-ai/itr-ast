@@ -18,5 +18,7 @@ steps:
       - |
         docker build -t itr-ast-build . --target itr-ast-build
 
+logsBucket: gs://imandra-dev-build-logs
+
 options:
   machineType: 'N1_HIGHCPU_8'
