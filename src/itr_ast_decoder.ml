@@ -25,12 +25,23 @@ let message_value_decoder : I.Message_value.t D.decoder =
 
 let span_decoder : Imandra_ptime.span D.decoder =
   let open D in
-  D.list string >>= function
-  | [ d; ps ] ->
-    (match Imandra_ptime.Span.of_d_ps (Z.of_string d, Z.of_string ps) with
-    | Some s -> D.succeed s
-    | None -> D.fail "invalid time span")
-  | _ -> D.fail "expected [d, ps]"
+  one_of
+    [
+      ( "string as int decoder",
+        D.list string >>= function
+        | [ d; ps ] ->
+          (match Imandra_ptime.Span.of_d_ps (Z.of_string d, Z.of_string ps) with
+          | Some s -> D.succeed s
+          | None -> D.fail "invalid time span")
+        | _ -> D.fail "expected [d, ps]" );
+      ( "int decoder",
+        D.list int_decoder >>= function
+        | [ d; ps ] ->
+          (match Imandra_ptime.Span.of_d_ps (d, ps) with
+          | Some s -> D.succeed s
+          | None -> D.fail "invalid time span")
+        | _ -> D.fail "expected [d, ps]" );
+    ]
 
 let ptime_decoder : Imandra_ptime.t D.decoder =
   let open D in
