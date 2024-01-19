@@ -1166,9 +1166,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "randString") && List.length args = 32 ->
+    when func = Literal (String "randString")  ->
     (match args with
-    | [ l ] ->
+    | l::_ ->
       (match evaluate_record_item l with
       | Rec_value (Value (Literal (Int l)))
         ->
