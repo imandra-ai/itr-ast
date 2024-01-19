@@ -1166,6 +1166,19 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "randString") && List.length args = 32 ->
+    (match args with
+    | [ l ] ->
+      (match evaluate_record_item l with
+      | Rec_value (Value (Literal (Int l)))
+        ->
+        let rec app_string l = 
+          if l<=0 then "" else 
+          CCFormat.sprintf "%s%x" (app_string (l-1)) (Random.int 15) in
+        Rec_value (Value (Literal (String (app_string (Z.to_int l)))))
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "Map.get_default") && List.length args = 1 ->
     (match args with
     | [ m ] ->
