@@ -871,7 +871,16 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       if CCList.for_all is_false (CCList.map fst cases) then
         res
       else
-        simplified_input
+     (
+     (* note here that in the meta-evaluator not (is_false x) is not equivalent to (is_true x) *)
+     (* it just means the expression might not be ground *)
+       CCList.filter (fun cv -> not (is_false (snd cv)))
+       cases|>
+      function
+      | [(Rec_value lhs,Rec_value rhs)] ->
+          Rec_value (And ({lhs;rhs}))
+      | _ -> simplified_input
+    )
     | Error (`GotResult ri) -> ri)
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
