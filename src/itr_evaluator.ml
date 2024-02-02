@@ -661,13 +661,23 @@ let check_cmp lhs rhs op =
     | _ -> Rec_value (Cmp { lhs; op; rhs }))
   | _ -> Rec_value (Cmp { lhs; op; rhs })
 
-let rec is_ground_expr : expr -> bool = function
+let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool = 
+  let is_ground_expr x = no_free_vars_expr bound_lambda_vars x in
+  let is_ground x = no_free_vars bound_lambda_vars x in
+  function
   | Value (Variable _v) -> false
   | Value (MessageValue _mv) -> false
-  | Value (LambdaVariable _v) -> true
+  | Value (LambdaVariable v) -> String_set.mem v bound_lambda_vars
   | Value (Funcall { args; _ }) -> CCList.for_all is_ground args
   | Value (ObjectProperty { obj; _ }) -> is_ground obj
-  | Value (Hof { body; _ }) -> is_ground body
+  | Value (Hof { body; lambda_args; _ }) -> 
+    let bound_lambda_vars = String_set.add_list bound_lambda_vars (
+      lambda_args
+        |> List.filter_map (function
+          | LambdaVariable v -> Some(v)
+          | _ -> None
+        )) in
+    no_free_vars bound_lambda_vars body
   | Value (CaseSplit { default_value; cases }) ->
     is_ground default_value
     && CCList.for_all (fun (a, b) -> is_ground a && is_ground b) cases
@@ -684,13 +694,16 @@ let rec is_ground_expr : expr -> bool = function
   | Eq { lhs; rhs } -> is_ground lhs && is_ground rhs
   | In { el; _ } -> is_ground_expr el
 
-and is_ground (e : record_item) : bool =
+and no_free_vars (bound_lambda_vars: String_set.t) (e : record_item) : bool =
+  let is_ground x = no_free_vars bound_lambda_vars x in
   match e with
-  | Rec_value r -> is_ground_expr r
+  | Rec_value r -> no_free_vars_expr bound_lambda_vars r
   | Rec_record { elements; _ } ->
     String_map.for_all (fun _ x -> is_ground x) elements
   | Rec_repeating_group { elements; _ } ->
     CCList.for_all (fun x -> is_ground (Rec_record x)) elements
+
+let is_ground (e : record_item) : bool = no_free_vars String_set.empty e
 
 module Expr_set = CCSet.Make (struct
   type t = expr
@@ -1429,7 +1442,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           | None -> e_none
           | Some r -> r)
         | _ -> Rec_value e))
-    | _ -> Rec_value e)
+    | _ ->
+      let body = evaluate_record_item body in
+      Rec_value (Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })))
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
     (match lhs, rhs with
