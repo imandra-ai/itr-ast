@@ -16,6 +16,7 @@ module Map_extra (M : CCMap.S) = struct
 end
 
 module String_map = Map_extra (CCMap.Make (CCString))
+module String_set = CCSet.Make (CCString)
 
 type field_path = (string * Z.t option) list
 
