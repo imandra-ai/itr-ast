@@ -872,11 +872,11 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     let case_result =
       CCResult.fold_l
         (fun acc (check, value) ->
-          if is_true (evaluate_record_item check) then
-            Error (`GotResult (evaluate_record_item value))
+          if is_true check then
+            Error (`GotResult value)
           else
             Ok acc)
-        (evaluate_record_item default_value)
+        default_value
         cases
     in
     (match case_result with
@@ -884,8 +884,17 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       if CCList.for_all is_false (CCList.map fst cases) then
         res
       else
-        simplified_input
-    | Error (`GotResult ri) -> ri)
+      (
+        cases
+        |> CCList.filter (fun (_condition, value) -> not (is_false value))
+        |> function
+          (* Single case which could possibly evaluate to true, equivalent to just condition && value *)
+          | [(Rec_value condition, Rec_value value)] when is_false default_value ->
+              Rec_value (And ({lhs = condition; rhs = value}))
+          | _ -> simplified_input
+      )
+    | Error (`GotResult ri) -> ri
+    )
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
