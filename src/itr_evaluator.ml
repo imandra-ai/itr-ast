@@ -1220,7 +1220,15 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | Some context ->
       (match String_map.get v context.local_vars with
       | Some (Record_item ri) -> evaluate_record_item ri
-      | _ -> Rec_value e))
+      | Some (Msg { msg; _ }) ->
+        evaluate_record_item (context.get_field msg [])
+      | None -> 
+        (match context.implicit_message with 
+          | Some {msg; _} when String.equal v "msg_data" ->
+            evaluate_record_item (context.get_field msg [])
+          | _ -> Rec_value e
+        )
+        ))
   | Value (Literal (Coll (ct, l))) ->
     Rec_value (Value (Literal (Coll (ct, List.map evaluate_record_item l))))
   | Value (Literal (MapColl (d, vs))) ->
