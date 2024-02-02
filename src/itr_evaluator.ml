@@ -955,7 +955,20 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | Rec_value lhs, Rec_value rhs -> check_cmp lhs rhs op
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "LString.length")||func = Literal (String "String.length")||func = Literal (String "len")) && List.length args = 1 ->
+    when (func = Literal (String "len")) && List.length args = 1 ->
+    (match args with
+    | [ a ] ->
+      (match evaluate_record_item a with
+      | Rec_value (Value (Literal (String s))) ->
+        Rec_value (Value (Literal (Int (Z.of_int (CCString.length s)))))
+      | Rec_value (Value (Literal (Coll (_, l)))) ->
+        Rec_value (Value (Literal (Int (Z.of_int (CCList.length l)))))
+      | Rec_repeating_group { elements; _ } ->
+        Rec_value (Value (Literal (Int (Z.of_int (CCList.length elements)))))
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
+    when (func = Literal (String "LString.length")||func = Literal (String "String.length")) && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -964,7 +977,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "List.length")||func = Literal (String "len")) && List.length args = 1 ->
+    when (func = Literal (String "List.length")) && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
