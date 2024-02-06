@@ -958,6 +958,27 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       in
       reconstruct_ands simplified_ands
     )
+  | Eq {
+    lhs = Rec_value(Value(Funcall {func = Hof {
+      hof_type = Map;
+      lambda_args = [LambdaVariable x1];
+      body
+    }; args = [
+      Rec_value(Value(Funcall {
+        func = Literal(String "take");
+        args = [
+          Rec_value(Value(Literal(Int value)));
+          arr
+        ]
+      }))
+    ]}));
+    rhs = Rec_value(Value(Literal(Coll(List, [a]))));
+  } when Z.equal value Z.one ->
+    (* Simplifies `map(f) take(1, arr) = [a]` to `f(hd(arr)) = a` *)
+    let arg = Funcall {func = Literal(String "hd"); args = [arr]} in
+    let lhs = replace_expr_in_record_item body (Value (LambdaVariable x1)) (Value arg) in
+    let rhs = a in
+    evaluate_expr(Eq{lhs; rhs;})
   | Eq { lhs : record_item; rhs : record_item } ->
     let lhs = evaluate_record_item lhs in
     let rhs = evaluate_record_item rhs in
