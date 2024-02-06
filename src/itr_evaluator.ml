@@ -1071,6 +1071,10 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "IsSet") && List.length args = 1 ->
     (match args with
+    (* Simplifies IsSet(Find X) to (Exists X) *)
+    | [ Rec_value (Value (Funcall {func = Hof {hof_type = Find; lambda_args; body;}; args;}))] ->
+      evaluate_expr
+        (Value (Funcall {func = Hof {hof_type = Exists; lambda_args; body}; args;}))
     | [ a ] ->
       evaluate_expr
         (Not (Eq { lhs = a; rhs = Rec_value (Value (Literal LiteralNone)) }))
