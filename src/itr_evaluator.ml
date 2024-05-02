@@ -336,10 +336,11 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
     | Rec_value lhs, Rec_value rhs -> Rec_value (Mul { lhs; op; rhs })
     | _ -> Rec_value (Mul { lhs; op; rhs }))
   | In { el : expr; set : value } ->
-    (match e_check, e_replace with
-    | Rec_value e_check, Rec_value e_replace ->
-      Rec_value (In { el = replace_expr_in_expr el e_check e_replace; set })
-    | _ -> Rec_value (In { el; set }))
+      (match (replace_record_item_in_expr el e_check e_replace) with
+      | Rec_value el ->
+        Rec_value (In { el; set })
+      | _ -> 
+        Rec_value (In {el; set}))
   | ri ->
     (match e_check, e_replace with
     | Rec_value e_check, Rec_value e_replace ->
