@@ -352,62 +352,51 @@ let rec fold f init e =
   | And { lhs; rhs }
   | Cmp { lhs; rhs; _ }
   | Add { lhs; rhs; _ }
-  | Mul { lhs; rhs; _ } ->
+  | Mul { lhs; rhs; _ }
+  | Eq { lhs = Rec_value lhs; rhs = Rec_value rhs } ->
     let init = fold f init lhs in
     let init = fold f init rhs in
     init
-  | Eq { lhs = Rec_value lhs; rhs = Rec_value rhs } ->
-    let lhs = Rec_value (fold f init lhs) in
-    let rhs = Rec_value (fold f init rhs) in
-    Eq { lhs; rhs }
   | In { el; _ } ->
     let init = fold f init el in
     init
   | _ -> init
 
-let rec get_vars_record_item ri acc =
-  match ri with
-  | Rec_value e -> get_vars_expr e acc
-  | Rec_record r ->
-    CCList.fold_left
-      (fun inner_acc (_, inner_el) -> get_vars_record_item inner_el inner_acc)
-      acc
-      (String_map.to_list r.elements)
-  | Rec_repeating_group r ->
-    CCList.fold_left
-      (fun inner_acc inner_el ->
-        CCList.fold_left
-          (fun r_acc (_, r_el) -> get_vars_record_item r_el r_acc)
-          inner_acc
-          (String_map.to_list inner_el.elements))
-      acc r.elements
+let fold_optional_stop f init e =
+  let acc = ref init in
+  let rec fold_inner e =
+    let acc_, continue = f !acc e in
+    acc := acc_;
+    if continue then
+      map fold_inner e
+    else
+      e
+  in
+  ignore (fold_inner e);
+  !acc
 
-and get_vars_expr e acc =
-  match e with
-  | Value (ObjectProperty { obj : record_item; _ }) ->
-    get_vars_record_item obj acc
-  | Value (Funcall { args : record_item list; _ }) ->
-    CCList.fold_left
-      (fun inner_acc inner_el -> get_vars_record_item inner_el inner_acc)
-      acc args
-  | Value _ -> e :: acc
-  | Not e1 -> get_vars_expr e1 acc
-  | Or { lhs; rhs }
-  | And { lhs; rhs }
-  | Cmp { lhs; rhs; _ }
-  | Add { lhs; rhs; _ }
-  | Mul { lhs; rhs; _ } ->
-    let vars_l_acc = get_vars_expr lhs acc in
-    let vars_r_acc = get_vars_expr rhs vars_l_acc in
-    vars_r_acc
-  | Eq { lhs = Rec_value lhs; rhs = Rec_value rhs } ->
-    let vars_l_acc = get_vars_expr lhs acc in
-    let vars_r_acc = get_vars_expr rhs vars_l_acc in
-    vars_r_acc
-  | In { el; _ } -> get_vars_expr el acc
-  | _ -> acc
-
-let get_vars e = get_vars_expr e []
+let get_vars e =
+  let rec is_var e =
+    match e with
+    | Value (MessageValue _) | Value (Variable _) | Value (LambdaVariable _) ->
+      true
+    | Value (ObjectProperty { obj; _ }) ->
+      (match obj with
+      | Rec_value e -> is_var e
+      | _ -> false)
+    | _ -> false
+  in
+  fold_optional_stop
+    (fun acc e ->
+      let is_var_ = is_var e in
+      let acc =
+        if is_var_ then
+          e :: acc
+        else
+          acc
+      in
+      acc, not is_var_)
+    [] e
 
 let is_funcall = function
   | Value (Funcall _) -> true
