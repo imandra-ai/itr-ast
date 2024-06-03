@@ -352,11 +352,14 @@ let rec fold f init e =
   | And { lhs; rhs }
   | Cmp { lhs; rhs; _ }
   | Add { lhs; rhs; _ }
-  | Mul { lhs; rhs; _ }
-  | Eq { lhs = Rec_value lhs; rhs = Rec_value rhs } ->
+  | Mul { lhs; rhs; _ } ->
     let init = fold f init lhs in
     let init = fold f init rhs in
     init
+  | Eq { lhs = Rec_value lhs; rhs = Rec_value rhs } ->
+    let lhs = Rec_value (fold f init lhs) in
+    let rhs = Rec_value (fold f init rhs) in
+    Eq { lhs; rhs }
   | In { el; _ } ->
     let init = fold f init el in
     init
