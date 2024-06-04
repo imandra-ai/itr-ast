@@ -7,7 +7,7 @@ _opam:
 
 .PHONY: dev-deps
 dev-deps: _opam
-	opam pin -y -n ocamlformat 0.20.1
+	opam pin -y -n ocamlformat 0.22.4
 	opam install -y ocamlformat merlin utop
 
 .PHONY: deps
