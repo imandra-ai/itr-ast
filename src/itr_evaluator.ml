@@ -339,7 +339,7 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
       (match (replace_record_item_in_expr el e_check e_replace) with
       | Rec_value el ->
         Rec_value (In { el; set })
-      | _ -> 
+      | _ ->
         Rec_value (In {el; set}))
   | ri ->
     (match e_check, e_replace with
@@ -662,7 +662,7 @@ let check_cmp lhs rhs op =
     | _ -> Rec_value (Cmp { lhs; op; rhs }))
   | _ -> Rec_value (Cmp { lhs; op; rhs })
 
-let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool = 
+let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool =
   let is_ground_expr x = no_free_vars_expr bound_lambda_vars x in
   let is_ground x = no_free_vars bound_lambda_vars x in
   function
@@ -671,7 +671,7 @@ let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool =
   | Value (LambdaVariable v) -> String_set.mem v bound_lambda_vars
   | Value (Funcall { args; _ }) -> CCList.for_all is_ground args
   | Value (ObjectProperty { obj; _ }) -> is_ground obj
-  | Value (Hof { body; lambda_args; _ }) -> 
+  | Value (Hof { body; lambda_args; _ }) ->
     let bound_lambda_vars = String_set.add_list bound_lambda_vars (
       lambda_args
         |> List.filter_map (function
@@ -1233,8 +1233,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match evaluate_record_item l with
       | Rec_value (Value (Literal (Int l)))
         ->
-        let rec app_string l = 
-          if l<=0 then "" else 
+        let rec app_string l =
+          if l<=0 then "" else
           CCFormat.sprintf "%s%x" (app_string (l-1)) (Random.int 15) in
         Rec_value (Value (Literal (String (app_string (Z.to_int l)))))
       | _ -> Rec_value e)
@@ -1399,7 +1399,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
            with
           | None -> e_none
           | Some r -> r)
-        | _ -> Rec_value e))
+        | _ -> Rec_value e)
+        | _ -> Rec_value e)
     | Rec_repeating_group { elements : record list; _ } ->
       (match hof_type with
       | For_all ->
@@ -1489,7 +1490,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
            with
           | None -> e_none
           | Some r -> r)
-        | _ -> Rec_value e))
+        | _ -> Rec_value e)
+        | _ -> Rec_value e)
     | _ ->
       let body = evaluate_record_item body in
       Rec_value (Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })))
