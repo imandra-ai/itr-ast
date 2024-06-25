@@ -81,6 +81,8 @@ type hof_type =
   | Map
   | Filter
   | Find
+  | For_all2
+  | Map2
 
 type coll_type =
   | Set

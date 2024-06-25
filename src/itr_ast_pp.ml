@@ -78,6 +78,8 @@ let hof_type_pp (ppf : formatter) : hof_type -> unit = function
   | Map -> fprintf ppf "map"
   | Filter -> fprintf ppf "filter"
   | Find -> fprintf ppf "find"
+  | For_all2 -> fprintf ppf "forall2"
+  | Map2 -> fprintf ppf "map2"
 
 let rec literal_pp (ppf : formatter) : literal -> unit = function
   | Bool true -> fprintf ppf "true"
