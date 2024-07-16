@@ -3,6 +3,8 @@
  (public_name itr-ast)
  (wrapped false)
  (flags :standard -warn-error -A+8+39 -w -33-58)
+ (preprocess
+  (pps ppx_deriving.std))
  (libraries
   containers
   decoders

@@ -18,7 +18,7 @@ end
 module String_map = Map_extra (CCMap.Make (CCString))
 module String_set = CCSet.Make (CCString)
 
-type field_path = (string * Z.t option) list
+type field_path = (string * Z.t option) list [@@deriving eq]
 
 module Field_path_set = CCSet.Make (struct
   type t = field_path
@@ -33,6 +33,7 @@ module Message_value = struct
     var: string option;
     field_path: field_path;
   }
+  [@@deriving eq]
 
   let mk ~var field_path = { var; field_path }
 
@@ -83,19 +84,22 @@ type hof_type =
   | Find
   | For_all2
   | Map2
+[@@deriving eq]
 
 type coll_type =
   | Set
   | List
   | Tuple
+[@@deriving eq]
 
 type datetime =
   | UTCTimestamp of T.t
   | UTCTimeOnly of T.t
   | UTCDateOnly of T.t
   | LocalMktDate of T.t
-  | MonthYear of T.t * TE.week option
+  | MonthYear of T.t * (TE.week[@equal fun a b -> a = b]) option
   | Duration of T.Span.t
+[@@deriving eq]
 
 type literal =
   | Bool of bool
@@ -187,6 +191,7 @@ and record_item =
       num_in_group_field: string;
       elements: record list;
     }
+[@@deriving eq]
 
 let rec expr_eq e1 e2 =
   match e1, e2 with
