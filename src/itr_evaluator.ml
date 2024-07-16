@@ -983,7 +983,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | Eq { lhs : record_item; rhs : record_item } ->
     let lhs = evaluate_record_item lhs in
     let rhs = evaluate_record_item rhs in
-    if lhs = rhs then
+    if Itr_ast.equal_record_item lhs rhs then
       e_true
     else if
       (* only evaluate equality to false if the terms have no variables *)
