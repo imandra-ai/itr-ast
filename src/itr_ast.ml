@@ -193,6 +193,17 @@ and record_item =
     }
 [@@deriving eq]
 
+let equal_record_item lhs rhs =
+  match lhs, rhs with
+  | ( Rec_repeating_group { elements; _ },
+      Rec_value (Value (Literal (Coll (List, coll_elements)))) )
+  | ( Rec_value (Value (Literal (Coll (List, coll_elements)))),
+      Rec_repeating_group { elements; _ } ) ->
+    CCList.equal equal_record_item
+      (CCList.map (fun r -> Rec_record r) elements)
+      coll_elements
+  | lhs, rhs -> equal_record_item lhs rhs
+
 let rec expr_eq e1 e2 =
   match e1, e2 with
   | Value v1, Value v2 -> value_eq v1 v2
