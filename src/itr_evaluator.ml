@@ -1118,12 +1118,12 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
          ( Field_path_map.get field_path1 context.field_presence_map,
            Field_path_map.get field_path2 context.field_presence_map )
        with
+      | _, Some Present ->
+         Rec_value
+           (Value (MessageValue { var = None; field_path = field_path2 }))
       | Some Present, _ ->
         Rec_value
           (Value (MessageValue { var = None; field_path = field_path1 }))
-      | _, Some Present ->
-        Rec_value
-          (Value (MessageValue { var = None; field_path = field_path2 }))
       | _ ->
         Rec_value
           (Value (Funcall { func; args = CCList.map evaluate_record_item args })))
