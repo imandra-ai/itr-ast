@@ -1,6 +1,6 @@
 (tests
- (names ast_pp_test)
- (modules ast_pp_test)
+ (names ast_pp_test evaluator_test)
+ (modules ast_pp_test evaluator_test)
  (libraries itr-ast))
 
 (executable
