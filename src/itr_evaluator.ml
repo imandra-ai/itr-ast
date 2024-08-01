@@ -1118,22 +1118,30 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
          ( Field_path_map.get field_path1 context.field_presence_map,
            Field_path_map.get field_path2 context.field_presence_map )
        with
+      | _, Some Present ->
+         Rec_value
+           (Value (MessageValue { var = None; field_path = field_path2 }))
       | Some Present, _ ->
         Rec_value
           (Value (MessageValue { var = None; field_path = field_path1 }))
-      | _, Some Present ->
-        Rec_value
-          (Value (MessageValue { var = None; field_path = field_path2 }))
       | _ ->
         Rec_value
           (Value (Funcall { func; args = CCList.map evaluate_record_item args })))
-    | [ _d; Rec_value (Value (MessageValue { var = None; field_path })) ] ->
+    | [ d; Rec_value (Value (MessageValue { var = None; field_path }) as a) ] ->
       (match Field_path_map.get field_path context.field_presence_map with
       | Some Present ->
         Rec_value (Value (MessageValue { var = None; field_path }))
       | _ ->
-        Rec_value
-          (Value (Funcall { func; args = CCList.map evaluate_record_item args })))
+        let a = evaluate_expr a in
+        (match a with
+          | Rec_value (Value (Literal LiteralNone)) -> evaluate_record_item d
+          | _ ->
+            if is_ground a then
+              a
+            else
+              Rec_value
+                (Value
+                  (Funcall { func; args = CCList.map evaluate_record_item args }))))
     | [ Rec_value (Value (MessageValue { var = None; field_path })); _ ] ->
       (match Field_path_map.get field_path context.field_presence_map with
       | Some Present ->
@@ -1146,7 +1154,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match a with
       | Rec_value (Value (Literal LiteralNone)) -> evaluate_record_item d
       | _ ->
-        if is_ground a && (not @@ is_none a) then
+        if is_ground a then
           a
         else
           Rec_value
