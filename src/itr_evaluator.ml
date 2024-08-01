@@ -336,11 +336,9 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
     | Rec_value lhs, Rec_value rhs -> Rec_value (Mul { lhs; op; rhs })
     | _ -> Rec_value (Mul { lhs; op; rhs }))
   | In { el : expr; set : value } ->
-      (match (replace_record_item_in_expr el e_check e_replace) with
-      | Rec_value el ->
-        Rec_value (In { el; set })
-      | _ ->
-        Rec_value (In {el; set}))
+    (match replace_record_item_in_expr el e_check e_replace with
+    | Rec_value el -> Rec_value (In { el; set })
+    | _ -> Rec_value (In { el; set }))
   | ri ->
     (match e_check, e_replace with
     | Rec_value e_check, Rec_value e_replace ->
@@ -383,9 +381,9 @@ and replace_expr_in_record_item ri (e_check : expr) (e_replace : expr) =
               })
             elements;
       }
-(** replace : ri -> check -> replace -> ri *)
-and
-replace_record_item_in_record_item ri (e_check : record_item)
+
+(* replace : ri -> check -> replace -> ri *)
+and replace_record_item_in_record_item ri (e_check : record_item)
     (e_replace : record_item) =
   if ri = e_check then
     e_replace
@@ -662,7 +660,7 @@ let check_cmp lhs rhs op =
     | _ -> Rec_value (Cmp { lhs; op; rhs }))
   | _ -> Rec_value (Cmp { lhs; op; rhs })
 
-let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool =
+let rec no_free_vars_expr (bound_lambda_vars : String_set.t) : expr -> bool =
   let is_ground_expr x = no_free_vars_expr bound_lambda_vars x in
   let is_ground x = no_free_vars bound_lambda_vars x in
   function
@@ -672,12 +670,13 @@ let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool =
   | Value (Funcall { args; _ }) -> CCList.for_all is_ground args
   | Value (ObjectProperty { obj; _ }) -> is_ground obj
   | Value (Hof { body; lambda_args; _ }) ->
-    let bound_lambda_vars = String_set.add_list bound_lambda_vars (
-      lambda_args
+    let bound_lambda_vars =
+      String_set.add_list bound_lambda_vars
+        (lambda_args
         |> List.filter_map (function
-          | LambdaVariable v -> Some(v)
-          | _ -> None
-        )) in
+             | LambdaVariable v -> Some v
+             | _ -> None))
+    in
     no_free_vars bound_lambda_vars body
   | Value (CaseSplit { default_value; cases }) ->
     is_ground default_value
@@ -695,7 +694,7 @@ let rec no_free_vars_expr (bound_lambda_vars: String_set.t): expr -> bool =
   | Eq { lhs; rhs } -> is_ground lhs && is_ground rhs
   | In { el; _ } -> is_ground_expr el
 
-and no_free_vars (bound_lambda_vars: String_set.t) (e : record_item) : bool =
+and no_free_vars (bound_lambda_vars : String_set.t) (e : record_item) : bool =
   let is_ground x = no_free_vars bound_lambda_vars x in
   match e with
   | Rec_value r -> no_free_vars_expr bound_lambda_vars r
@@ -877,25 +876,21 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
             Error (`GotResult value)
           else
             Ok acc)
-        default_value
-        cases
+        default_value cases
     in
     (match case_result with
     | Ok res ->
       if CCList.for_all is_false (CCList.map fst cases) then
         res
       else
-      (
-        cases
-        |> CCList.filter (fun (_condition, value) -> not (is_false value))
-        |> function
-          (* Single case which could possibly evaluate to true, equivalent to just condition && value *)
-          | [(Rec_value condition, Rec_value value)] when is_false default_value ->
-              Rec_value (And ({lhs = condition; rhs = value}))
-          | _ -> simplified_input
-      )
-    | Error (`GotResult ri) -> ri
-    )
+        cases |> CCList.filter (fun (_condition, value) -> not (is_false value))
+        |> ( function
+        (* Single case which could possibly evaluate to true, equivalent to just condition && value *)
+        | [ (Rec_value condition, Rec_value value) ] when is_false default_value
+          ->
+          Rec_value (And { lhs = condition; rhs = value })
+        | _ -> simplified_input )
+    | Error (`GotResult ri) -> ri)
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
@@ -959,27 +954,42 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       in
       reconstruct_ands simplified_ands
     )
-  | Eq {
-    lhs = Rec_value(Value(Funcall {func = Hof {
-      hof_type = Map;
-      lambda_args = [LambdaVariable x1];
-      body
-    }; args = [
-      Rec_value(Value(Funcall {
-        func = Literal(String "take");
-        args = [
-          Rec_value(Value(Literal(Int value)));
-          arr
-        ]
-      }))
-    ]}));
-    rhs = Rec_value(Value(Literal(Coll(List, [a]))));
-  } when Z.equal value Z.one ->
+  | Eq
+      {
+        lhs =
+          Rec_value
+            (Value
+              (Funcall
+                {
+                  func =
+                    Hof
+                      {
+                        hof_type = Map;
+                        lambda_args = [ LambdaVariable x1 ];
+                        body;
+                      };
+                  args =
+                    [
+                      Rec_value
+                        (Value
+                          (Funcall
+                            {
+                              func = Literal (String "take");
+                              args =
+                                [ Rec_value (Value (Literal (Int value))); arr ];
+                            }));
+                    ];
+                }));
+        rhs = Rec_value (Value (Literal (Coll (List, [ a ]))));
+      }
+    when Z.equal value Z.one ->
     (* Simplifies `map(f) take(1, arr) = [a]` to `f(hd(arr)) = a` *)
-    let arg = Funcall {func = Literal(String "hd"); args = [arr]} in
-    let lhs = replace_expr_in_record_item body (Value (LambdaVariable x1)) (Value arg) in
+    let arg = Funcall { func = Literal (String "hd"); args = [ arr ] } in
+    let lhs =
+      replace_expr_in_record_item body (Value (LambdaVariable x1)) (Value arg)
+    in
     let rhs = a in
-    evaluate_expr(Eq{lhs; rhs;})
+    evaluate_expr (Eq { lhs; rhs })
   | Eq { lhs : record_item; rhs : record_item } ->
     let lhs = evaluate_record_item lhs in
     let rhs = evaluate_record_item rhs in
@@ -999,7 +1009,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | Rec_value lhs, Rec_value rhs -> check_cmp lhs rhs op
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "len")) && List.length args = 1 ->
+    when func = Literal (String "len") && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1012,7 +1022,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "LString.length")||func = Literal (String "String.length")) && List.length args = 1 ->
+    when (func = Literal (String "LString.length")
+         || func = Literal (String "String.length"))
+         && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1021,7 +1033,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "List.length")) && List.length args = 1 ->
+    when func = Literal (String "List.length") && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1032,7 +1044,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "List.take")|| func = Literal (String "take")) && List.length args = 2 ->
+    when (func = Literal (String "List.take") || func = Literal (String "take"))
+         && List.length args = 2 ->
     (match args with
     | [ n; a ] ->
       (match evaluate_record_item n, evaluate_record_item a with
@@ -1052,10 +1065,10 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when ((func = Literal (String "String.length")
+    when (func = Literal (String "String.length")
          || func = Literal (String "LString.length")
-         || func = Literal (String "len")) && List.length args = 1)
-    ->
+         || func = Literal (String "len"))
+         && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1064,7 +1077,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "List.hd")|| func = Literal (String "hd")) && List.length args = 1 ->
+    when (func = Literal (String "List.hd") || func = Literal (String "hd"))
+         && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1076,7 +1090,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "List.tl")||func=Literal(String "tl")) && List.length args = 1 ->
+    when (func = Literal (String "List.tl") || func = Literal (String "tl"))
+         && List.length args = 1 ->
     (match args with
     | [ a ] ->
       (match evaluate_record_item a with
@@ -1094,9 +1109,15 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     when func = Literal (String "IsSet") && List.length args = 1 ->
     (match args with
     (* Simplifies IsSet(Find X) to (Exists X) *)
-    | [ Rec_value (Value (Funcall {func = Hof {hof_type = Find; lambda_args; body;}; args;}))] ->
+    | [
+     Rec_value
+       (Value
+         (Funcall { func = Hof { hof_type = Find; lambda_args; body }; args }));
+    ] ->
       evaluate_expr
-        (Value (Funcall {func = Hof {hof_type = Exists; lambda_args; body}; args;}))
+        (Value
+           (Funcall
+              { func = Hof { hof_type = Exists; lambda_args; body }; args }))
     | [ a ] ->
       evaluate_expr
         (Not (Eq { lhs = a; rhs = Rec_value (Value (Literal LiteralNone)) }))
@@ -1119,8 +1140,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
            Field_path_map.get field_path2 context.field_presence_map )
        with
       | _, Some Present ->
-         Rec_value
-           (Value (MessageValue { var = None; field_path = field_path2 }))
+        Rec_value
+          (Value (MessageValue { var = None; field_path = field_path2 }))
       | Some Present, _ ->
         Rec_value
           (Value (MessageValue { var = None; field_path = field_path1 }))
@@ -1134,14 +1155,14 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ ->
         let a = evaluate_expr a in
         (match a with
-          | Rec_value (Value (Literal LiteralNone)) -> evaluate_record_item d
-          | _ ->
-            if is_ground a then
-              a
-            else
-              Rec_value
-                (Value
-                  (Funcall { func; args = CCList.map evaluate_record_item args }))))
+        | Rec_value (Value (Literal LiteralNone)) -> evaluate_record_item d
+        | _ ->
+          if is_ground a then
+            a
+          else
+            Rec_value
+              (Value
+                 (Funcall { func; args = CCList.map evaluate_record_item args }))))
     | [ Rec_value (Value (MessageValue { var = None; field_path })); _ ] ->
       (match Field_path_map.get field_path context.field_presence_map with
       | Some Present ->
@@ -1162,7 +1183,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                (Funcall { func; args = CCList.map evaluate_record_item args })))
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when (func = Literal (String "Set.subset") || func = Literal (String ("subset"))) && List.length args = 2 ->
+    when (func = Literal (String "Set.subset")
+         || func = Literal (String "subset"))
+         && List.length args = 2 ->
     (match args with
     | [ l; r ] ->
       let l = evaluate_record_item l in
@@ -1235,15 +1258,17 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
-    when func = Literal (String "randString")  ->
+    when func = Literal (String "randString") ->
     (match args with
-    | l::_ ->
+    | l :: _ ->
       (match evaluate_record_item l with
-      | Rec_value (Value (Literal (Int l)))
-        ->
+      | Rec_value (Value (Literal (Int l))) ->
         let rec app_string l =
-          if l<=0 then "" else
-          CCFormat.sprintf "%s%x" (app_string (l-1)) (Random.int 15) in
+          if l <= 0 then
+            ""
+          else
+            CCFormat.sprintf "%s%x" (app_string (l - 1)) (Random.int 15)
+        in
         Rec_value (Value (Literal (String (app_string (Z.to_int l)))))
       | _ -> Rec_value e)
     | _ -> Rec_value e)
@@ -1317,63 +1342,77 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | None, Some { msg; _ } ->
         evaluate_record_item (context.get_field msg field_path)
       | None, None -> Rec_value e))
-  | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args=[arg1;arg2] }) ->
-    (let grab_record_list = function
-    | Rec_value (Value (Literal (Coll (_ct, args1)))) ->
-      args1
-    | Rec_repeating_group { elements=elements; _ }->
+  | Value
+      (Funcall
+        { func = Hof { hof_type; lambda_args; body }; args = [ arg1; arg2 ] })
+    ->
+    let grab_record_list = function
+      | Rec_value (Value (Literal (Coll (_ct, args1)))) -> args1
+      | Rec_repeating_group { elements; _ } ->
         CCList.map (fun r -> Rec_record r) elements
-    (* not possible so a dummy return here *)
-    | _ -> [Rec_value (Value (Literal LiteralNone))]
+      (* not possible so a dummy return here *)
+      | _ -> [ Rec_value (Value (Literal LiteralNone)) ]
     in
-    let record1, record2 = grab_record_list (evaluate_record_item arg1),grab_record_list (evaluate_record_item arg2) in
-      (match hof_type with
-      | For_all2 ->
-        (match lambda_args with
-        | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
-          evaluate_expr
-            (CCList.fold_left2
-               (fun rhs e_replace1 e_replace2 ->
-                 let repl =
-                   evaluate_record_item
-                     (replace_record_item_in_record_item body
-                        (Rec_value (Value (LambdaVariable e_check1))) e_replace1)
-                 in
-                 let repl =
-                  evaluate_record_item
-                    (replace_record_item_in_record_item repl
-                       (Rec_value (Value (LambdaVariable e_check2))) e_replace2)
-                in
-                 match repl with
-                 | Rec_value lhs ->
-                   (match evaluate_expr (And { lhs ; rhs }) with
-                   | Rec_value expr -> expr
-                   | _ -> Value (Literal (Bool false)))
+    let record1, record2 =
+      ( grab_record_list (evaluate_record_item arg1),
+        grab_record_list (evaluate_record_item arg2) )
+    in
+    (match hof_type with
+    | For_all2 ->
+      (match lambda_args with
+      | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
+        evaluate_expr
+          (CCList.fold_left2
+             (fun rhs e_replace1 e_replace2 ->
+               let repl =
+                 evaluate_record_item
+                   (replace_record_item_in_record_item body
+                      (Rec_value (Value (LambdaVariable e_check1))) e_replace1)
+               in
+               let repl =
+                 evaluate_record_item
+                   (replace_record_item_in_record_item repl
+                      (Rec_value (Value (LambdaVariable e_check2))) e_replace2)
+               in
+               match repl with
+               | Rec_value lhs ->
+                 (match evaluate_expr (And { lhs; rhs }) with
+                 | Rec_value expr -> expr
                  | _ -> Value (Literal (Bool false)))
-               (Value (Literal (Bool true))) record1 record2)
-        | _ -> Rec_value e)
-      | Map2 ->  (match lambda_args with
-        | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
-          Rec_value
-            (Value
-               (Literal
-                  (Coll
-                     ( List,
-            (CCList.map2
-               (fun e_replace1 e_replace2 ->
-                 let repl =
-                   evaluate_record_item
-                     (replace_record_item_in_record_item body
-                        (Rec_value (Value (LambdaVariable e_check1))) e_replace1)
-                 in
-                  evaluate_record_item
-                    (replace_record_item_in_record_item repl
-                       (Rec_value (Value (LambdaVariable e_check2))) e_replace2)
-               )
-               record1 record2)))))
-        | _ -> Rec_value e)
-        | _ ->  let body = evaluate_record_item body in
-        Rec_value (Value (Funcall { func = Hof { hof_type; lambda_args; body }; args=[arg1;arg2] }))))
+               | _ -> Value (Literal (Bool false)))
+             (Value (Literal (Bool true))) record1 record2)
+      | _ -> Rec_value e)
+    | Map2 ->
+      (match lambda_args with
+      | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
+        Rec_value
+          (Value
+             (Literal
+                (Coll
+                   ( List,
+                     CCList.map2
+                       (fun e_replace1 e_replace2 ->
+                         let repl =
+                           evaluate_record_item
+                             (replace_record_item_in_record_item body
+                                (Rec_value (Value (LambdaVariable e_check1)))
+                                e_replace1)
+                         in
+                         evaluate_record_item
+                           (replace_record_item_in_record_item repl
+                              (Rec_value (Value (LambdaVariable e_check2)))
+                              e_replace2))
+                       record1 record2 ))))
+      | _ -> Rec_value e)
+    | _ ->
+      let body = evaluate_record_item body in
+      Rec_value
+        (Value
+           (Funcall
+              {
+                func = Hof { hof_type; lambda_args; body };
+                args = [ arg1; arg2 ];
+              })))
   | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })
     when CCList.length args = 1 ->
     (match evaluate_record_item (CCList.hd args) with
@@ -1465,7 +1504,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           | None -> e_none
           | Some r -> r)
         | _ -> Rec_value e)
-        | _ -> Rec_value e)
+      | _ -> Rec_value e)
     | Rec_repeating_group { elements : record list; _ } ->
       (match hof_type with
       | For_all ->
@@ -1556,10 +1595,11 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           | None -> e_none
           | Some r -> r)
         | _ -> Rec_value e)
-        | _ -> Rec_value e)
+      | _ -> Rec_value e)
     | _ ->
       let body = evaluate_record_item body in
-      Rec_value (Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })))
+      Rec_value
+        (Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })))
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
     (match lhs, rhs with
@@ -1634,46 +1674,48 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | _ -> Rec_value e
 
 and normalise_to_is_set record_item =
-    match record_item with
-    | Rec_value expr ->
-      Rec_value (walk (function
-      | Eq
+  match record_item with
+  | Rec_value expr ->
+    Rec_value
+      (walk
+         (function
+           | Eq { lhs; rhs = Rec_value (Value (Literal LiteralNone)) } ->
+             Not
+               (Value
+                  (Funcall { func = Literal (String "IsSet"); args = [ lhs ] }))
+           | Eq { lhs = Rec_value (Value (Literal LiteralNone)); rhs } ->
+             Not
+               (Value
+                  (Funcall { func = Literal (String "IsSet"); args = [ rhs ] }))
+           | Not (Eq { lhs; rhs = Rec_value (Value (Literal LiteralNone)) }) ->
+             Value (Funcall { func = Literal (String "IsSet"); args = [ lhs ] })
+           | Not (Eq { lhs = Rec_value (Value (Literal LiteralNone)); rhs }) ->
+             Value (Funcall { func = Literal (String "IsSet"); args = [ rhs ] })
+           | e -> e)
+         expr)
+  | Rec_record { name; elements } ->
+    Rec_record { name; elements = String_map.map normalise_to_is_set elements }
+  | Rec_repeating_group
+      { name; message_template; num_in_group_field; elements : record list } ->
+    Rec_repeating_group
       {
-        lhs;
-        rhs = Rec_value (Value (Literal LiteralNone));
-      } -> Not (Value (Funcall {func=Literal (String "IsSet");args=[lhs]}))
-      | Eq
-      {
-        lhs = Rec_value (Value (Literal LiteralNone));
-        rhs;
-      } -> Not (Value (Funcall {func=Literal (String "IsSet");args=[rhs]}))
-      | Not (Eq
-      {
-        lhs;
-        rhs = Rec_value (Value (Literal LiteralNone));
-      }) -> Value (Funcall {func=Literal (String "IsSet");args=[lhs]})
-      | Not (Eq
-      {
-        lhs = Rec_value (Value (Literal LiteralNone));
-        rhs;
-      })->  Value (Funcall {func=Literal (String "IsSet");args=[rhs]})
-      | e -> e) expr)
-    | Rec_record {name;elements} -> Rec_record {name;elements = String_map.map normalise_to_is_set elements}
-    | Rec_repeating_group { name;
-    message_template;
-    num_in_group_field;
-    elements: record list;} -> Rec_repeating_group {name;message_template;num_in_group_field;elements = CCList.map (function {name;elements} ->
-      {name;elements =String_map.map normalise_to_is_set elements}
-      ) elements}
+        name;
+        message_template;
+        num_in_group_field;
+        elements =
+          CCList.map
+            (function
+              | { name; elements } ->
+                { name; elements = String_map.map normalise_to_is_set elements })
+            elements;
+      }
 
-and fix_evaluate_record_item context
-  record_item =
+and fix_evaluate_record_item context record_item =
   let res = evaluate_record_item context record_item in
   if res = record_item then
     normalise_to_is_set record_item
   else
     fix_evaluate_record_item context res
-
 
 let fix_evaluate_constraints context constraints =
   CCList.map (fix_evaluate_record_item context) constraints
