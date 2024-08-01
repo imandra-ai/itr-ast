@@ -22,7 +22,8 @@ let context msg =
                 Rec_value
                   (Value (Field_path_map.get_or ~default:lit_none path ctx)));
           };
-      field_presence_map = Field_path_map.empty;
+      field_presence_map =
+        Field_path_map.map (fun _ -> Itr_evaluator.Present) msg;
     }
 
 let () =
@@ -58,5 +59,39 @@ let () =
   let result = Itr_evaluator.evaluate_expr ctx item in
   CCFormat.printf
     "@[<v 2>Default used when implicit message doesn't include field:@ \
+     @[input: %a@]@ @[context: %a@]@ @[result: %a@] @]@."
+    Itr_ast_pp.expr_pp item msg_pp msg Itr_ast_pp.record_item_pp result
+
+let () =
+  let field_path_one = [ "field_one", None ] in
+  let field_path_two = [ "field_two", None ] in
+  let item =
+    Itr_ast.(
+      Value
+        (Funcall
+           {
+             func = lit_string "defaultIfNotSet";
+             args =
+               [
+                 Rec_value
+                   (Value
+                      (MessageValue { var = None; field_path = field_path_two }));
+                 Rec_value
+                   (Value
+                      (MessageValue { var = None; field_path = field_path_one }));
+               ];
+           }))
+  in
+  let msg =
+    Itr_evaluator.Field_path_map.of_list
+      [
+        field_path_one, lit_string "field_one";
+        field_path_two, lit_string "field_two";
+      ]
+  in
+  let ctx = context msg in
+  let result = Itr_evaluator.evaluate_expr ctx item in
+  CCFormat.printf
+    "@[<v 2>Result evaluated and used when there's a fallback default: @ \
      @[input: %a@]@ @[context: %a@]@ @[result: %a@] @]@."
     Itr_ast_pp.expr_pp item msg_pp msg Itr_ast_pp.record_item_pp result

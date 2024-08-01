@@ -1,8 +1,12 @@
 Field used when set in implicit message:
   input: defaultIfNotSet("default",field)
   context: field -> "non_default"
-  result: "non_default" 
+  result: field 
 Default used when implicit message doesn't include field:
   input: defaultIfNotSet("default",field)
   context: a_different_field -> "non_default"
   result: "default" 
+Result evaluated and used when there's a fallback default: 
+  input: defaultIfNotSet(field_two,field_one)
+  context: field_one -> "field_one", field_two -> "field_two"
+  result: field_two 
