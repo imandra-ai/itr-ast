@@ -10,3 +10,7 @@ Result evaluated and used when there's a fallback default:
   input: defaultIfNotSet(field_two,field_one)
   context: field_one -> "field_one", field_two -> "field_two"
   result: field_one 
+Result evaluated from equality to field path to: 
+  input: None = field_two
+  context: empty
+  result: None = field_two 

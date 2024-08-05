@@ -95,3 +95,25 @@ let () =
     "@[<v 2>Result evaluated and used when there's a fallback default: @ \
      @[input: %a@]@ @[context: %a@]@ @[result: %a@] @]@."
     Itr_ast_pp.expr_pp item msg_pp msg Itr_ast_pp.record_item_pp result
+
+let () =
+  let field_path_one = [ "field_two", None ] in
+  let item =
+    Itr_ast.(
+      Eq
+        {
+          lhs =
+            Rec_value
+              (Value
+                 (Literal
+                    (LiteralNone)));
+          rhs =
+            Rec_value
+              (Value (MessageValue { var = None; field_path = field_path_one }));
+        })
+  in
+  let result = Itr_evaluator.evaluate_expr Itr_evaluator.empty_context item in
+  CCFormat.printf
+    "@[<v 2>Result evaluated from equality to field path to: @ @[input: %a@]@ \
+     @[context: empty@]@ @[result: %a@] @]@."
+    Itr_ast_pp.expr_pp item Itr_ast_pp.record_item_pp result
