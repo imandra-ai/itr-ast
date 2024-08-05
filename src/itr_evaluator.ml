@@ -683,6 +683,10 @@ let rec no_free_vars_expr (bound_lambda_vars : String_set.t) : expr -> bool =
     && CCList.for_all (fun (a, b) -> is_ground a && is_ground b) cases
   | Value (DataSetValue { default; constraints; _ }) ->
     is_ground default && CCList.for_all is_ground constraints
+  | Value (Literal (LiteralSome r)) -> is_ground r
+  | Value (Literal (Coll (_, l))) -> CCList.for_all is_ground l
+  | Value (Literal (MapColl (r, l))) ->
+    is_ground r && CCList.for_all (fun (l, r) -> is_ground l && is_ground r) l
   | Value (Literal _) -> true
   | Not e1 -> is_ground_expr e1
   | Or { lhs; rhs }
