@@ -1347,63 +1347,80 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         { func = Hof { hof_type; lambda_args; body }; args = [ arg1; arg2 ] })
     ->
     let grab_record_list = function
-      | Rec_value (Value (Literal (Coll (_ct, args1)))) -> args1
+      | Rec_value (Value (Literal (Coll (_ct, args1)))) -> Some args1
       | Rec_repeating_group { elements; _ } ->
-        CCList.map (fun r -> Rec_record r) elements
+        Some (CCList.map (fun r -> Rec_record r) elements)
       (* not possible so a dummy return here *)
-      | _ -> [ Rec_value (Value (Literal LiteralNone)) ]
+      | _ -> None
     in
     let record1, record2 =
       ( grab_record_list (evaluate_record_item arg1),
         grab_record_list (evaluate_record_item arg2) )
     in
-    (match hof_type with
-    | For_all2 ->
-      (match lambda_args with
-      | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
-        evaluate_expr
-          (CCList.fold_left2
-             (fun rhs e_replace1 e_replace2 ->
-               let repl =
-                 evaluate_record_item
-                   (replace_record_item_in_record_item body
-                      (Rec_value (Value (LambdaVariable e_check1))) e_replace1)
-               in
-               let repl =
-                 evaluate_record_item
-                   (replace_record_item_in_record_item repl
-                      (Rec_value (Value (LambdaVariable e_check2))) e_replace2)
-               in
-               match repl with
-               | Rec_value lhs ->
-                 (match evaluate_expr (And { lhs; rhs }) with
-                 | Rec_value expr -> expr
+    (match record1, record2 with
+    | Some record1, Some record2 ->
+      (match hof_type with
+      | For_all2 ->
+        (match lambda_args with
+        | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
+          evaluate_expr
+            (CCList.fold_left2
+               (fun rhs e_replace1 e_replace2 ->
+                 let repl =
+                   replace_record_item_in_record_item body
+                     (Rec_value (Value (LambdaVariable e_check1))) e_replace1
+                 in
+                 CCFormat.printf "REPL: %a\n" Itr_ast_pp.record_item_pp repl;
+                 let repl = evaluate_record_item repl in
+                 CCFormat.printf "REPL SIMP: %a\n" Itr_ast_pp.record_item_pp
+                   repl;
+
+                 let repl =
+                   evaluate_record_item
+                     (replace_record_item_in_record_item repl
+                        (Rec_value (Value (LambdaVariable e_check2))) e_replace2)
+                 in
+                 match repl with
+                 | Rec_value lhs ->
+                   (match evaluate_expr (And { lhs; rhs }) with
+                   | Rec_value (Value (Literal (Bool false))) ->
+                     Value (Literal (Bool false))
+                   | Rec_value expr -> expr
+                   | _ -> Value (Literal (Bool false)))
                  | _ -> Value (Literal (Bool false)))
-               | _ -> Value (Literal (Bool false)))
-             (Value (Literal (Bool true))) record1 record2)
-      | _ -> Rec_value e)
-    | Map2 ->
-      (match lambda_args with
-      | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
+               (Value (Literal (Bool true))) record1 record2)
+        | _ -> Rec_value e)
+      | Map2 ->
+        (match lambda_args with
+        | [ LambdaVariable e_check1; LambdaVariable e_check2 ] ->
+          Rec_value
+            (Value
+               (Literal
+                  (Coll
+                     ( List,
+                       CCList.map2
+                         (fun e_replace1 e_replace2 ->
+                           let repl =
+                             evaluate_record_item
+                               (replace_record_item_in_record_item body
+                                  (Rec_value (Value (LambdaVariable e_check1)))
+                                  e_replace1)
+                           in
+                           evaluate_record_item
+                             (replace_record_item_in_record_item repl
+                                (Rec_value (Value (LambdaVariable e_check2)))
+                                e_replace2))
+                         record1 record2 ))))
+        | _ -> Rec_value e)
+      | _ ->
+        let body = evaluate_record_item body in
         Rec_value
           (Value
-             (Literal
-                (Coll
-                   ( List,
-                     CCList.map2
-                       (fun e_replace1 e_replace2 ->
-                         let repl =
-                           evaluate_record_item
-                             (replace_record_item_in_record_item body
-                                (Rec_value (Value (LambdaVariable e_check1)))
-                                e_replace1)
-                         in
-                         evaluate_record_item
-                           (replace_record_item_in_record_item repl
-                              (Rec_value (Value (LambdaVariable e_check2)))
-                              e_replace2))
-                       record1 record2 ))))
-      | _ -> Rec_value e)
+             (Funcall
+                {
+                  func = Hof { hof_type; lambda_args; body };
+                  args = [ arg1; arg2 ];
+                })))
     | _ ->
       let body = evaluate_record_item body in
       Rec_value

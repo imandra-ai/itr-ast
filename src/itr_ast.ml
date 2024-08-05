@@ -248,7 +248,11 @@ let rec map_value ~map_record_item = function
   | ObjectProperty { obj; index; prop } ->
     ObjectProperty { obj = map_record_item obj; index; prop }
   | Funcall { func; args } ->
-    Funcall { func = map_value ~map_record_item func; args = List.map map_record_item args }
+    Funcall
+      {
+        func = map_value ~map_record_item func;
+        args = List.map map_record_item args;
+      }
   | Literal (Coll (ct, l)) -> Literal (Coll (ct, List.map map_record_item l))
   | Literal (MapColl (d, l)) ->
     Literal
