@@ -1432,11 +1432,12 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
            (Funcall
               {
                 func = Hof { hof_type; lambda_args; body };
-                args = [ arg1; arg2 ];
+                args = [ evaluate_record_item arg1; evaluate_record_item arg2 ];
               })))
-  | Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })
-    when CCList.length args = 1 ->
-    (match evaluate_record_item (CCList.hd args) with
+  | Value
+      (Funcall { func = Hof { hof_type; lambda_args; body }; args = [ arg ] })
+    ->
+    (match evaluate_record_item arg with
     | Rec_value (Value (Literal (Coll (ct, args)))) ->
       (match hof_type with
       | For_all ->
@@ -1620,7 +1621,12 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | _ ->
       let body = evaluate_record_item body in
       Rec_value
-        (Value (Funcall { func = Hof { hof_type; lambda_args; body }; args })))
+        (Value
+           (Funcall
+              {
+                func = Hof { hof_type; lambda_args; body };
+                args = [ evaluate_record_item arg ];
+              })))
   | Add { lhs : expr; op : char; rhs : expr } ->
     let lhs, rhs = evaluate_expr lhs, evaluate_expr rhs in
     (match lhs, rhs with
