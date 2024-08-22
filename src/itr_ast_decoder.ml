@@ -473,8 +473,9 @@ let instruction_decoder () : I.instruction D.decoder =
       let* variable = field "variable" (nullable string) in
       let* where = field "where" (expr_decoder ()) in
       let* expecting = field "expecting" (nullable expecting_decoder) in
+      let* description = field_opt "description" string in
       let+ example = field "example" (record_decoder ()) in
-      I.Receive { variable; where; expecting; example }
+      I.Receive { variable; where; expecting; example; description }
     | "Prompt" ->
       let* prop = field "prop" string in
       let+ and_set = field "and_set" bool in

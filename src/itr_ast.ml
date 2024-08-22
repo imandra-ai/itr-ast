@@ -619,6 +619,10 @@ type instruction =
       where: expr;
       expecting: expecting option;
       example: record;
+      description: string option;
+          (** Optionally provide a human-readable string of the expected receive.  
+             If None, it will have no effect. If Some s, it will alter the display in the UI.
+          *)
     }
 
 module Instructions_set = CCSet.Make (struct
@@ -713,5 +717,5 @@ let send ?variable ~tag ?values () = Send { variable; withs = values; tag }
 let expecting relevant_exprs common_exprs qe_modified_exprs nullable_exprs =
   { relevant_exprs; common_exprs; qe_modified_exprs; nullable_exprs }
 
-let receive ?variable ~where ?expecting ~example () =
-  Receive { variable; where; expecting; example }
+let receive ?variable ~where ?expecting ~example ?description () =
+  Receive { variable; where; expecting; example; description }
