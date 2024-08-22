@@ -468,7 +468,8 @@ let instruction_decoder () : I.instruction D.decoder =
           ]
       in
       let* withs = field "withs" (nullable (record_decoder ())) in
-      succeed (I.Send { variable; tag; withs })
+      let* description = field_opt "description" string in
+      succeed (I.Send { variable; tag; withs; description })
     | "Receive" ->
       let* variable = field "variable" (nullable string) in
       let* where = field "where" (expr_decoder ()) in

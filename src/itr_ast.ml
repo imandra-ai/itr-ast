@@ -613,6 +613,12 @@ type instruction =
       variable: string option;
       tag: string;
       withs: record option;
+      description: string option;
+          (** Optionally provide a human-readable string of the expected send.  
+             If None, it will have no effect. If Some s, it will alter the display in the UI.
+
+             E.g. "Sending QuoteRequest: "
+          *)
     }
   | Receive of {
       variable: string option;
@@ -622,6 +628,8 @@ type instruction =
       description: string option;
           (** Optionally provide a human-readable string of the expected receive.  
              If None, it will have no effect. If Some s, it will alter the display in the UI.
+
+             E.g. "Expecting a NewOrderSingle with the following constraints:" 
           *)
     }
 
@@ -712,7 +720,8 @@ let set prop value = Set { prop; value }
 
 let not' e = Not e
 
-let send ?variable ~tag ?values () = Send { variable; withs = values; tag }
+let send ?variable ~tag ?values ?description () =
+  Send { variable; withs = values; tag; description }
 
 let expecting relevant_exprs common_exprs qe_modified_exprs nullable_exprs =
   { relevant_exprs; common_exprs; qe_modified_exprs; nullable_exprs }
