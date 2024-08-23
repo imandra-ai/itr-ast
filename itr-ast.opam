@@ -13,4 +13,7 @@ depends: [
   "containers"
   "decoders"
   "decoders-yojson"
+  "ppx_deriving_yojson"
+  "ptime"
+  "zarith"
 ]

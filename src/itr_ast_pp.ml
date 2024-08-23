@@ -222,7 +222,7 @@ let rec instruction_pp (ppf : formatter) : instruction -> unit =
   | Message _ -> ()
   | Set { prop; value } ->
     fprintf ppf "set %s = %a" prop record_item_pp_parens value
-  | Send { variable; tag; withs } ->
+  | Send { variable; tag; withs; _ } ->
     fprintf ppf "@[<v>send %a(%s) %a@]" pp_var_eq_opt variable tag
       (CCFormat.some record_pp) withs
   | Prompt { prop; and_set } ->

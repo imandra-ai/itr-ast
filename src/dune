@@ -4,11 +4,12 @@
  (wrapped false)
  (flags :standard -warn-error -A+8+39 -w -33-58)
  (preprocess
-  (pps ppx_deriving.std))
+  (pps ppx_deriving.std ppx_deriving_yojson))
  (libraries
   containers
   decoders
   decoders-yojson
+  ppx_deriving_yojson.runtime
   yojson
   zarith
   imandra-ptime

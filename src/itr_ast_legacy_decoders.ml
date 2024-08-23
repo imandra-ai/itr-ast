@@ -1,5 +1,4 @@
 (* LEGACY DECODERS FOR BACK-COMPATIBILITY *)
-module I = Itr_ast
 open Decoders_yojson.Basic.Decode
 
 let int_decoder : Z.t Decoders_yojson.Basic.Decode.decoder =
