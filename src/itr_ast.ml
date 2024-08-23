@@ -1,19 +1,16 @@
-module T = Imandra_ptime
-module TE = Imandra_ptime_extra
+module Imandra_ptime = struct
+  include Imandra_ptime
 
-module Imandra_ptime_ED = struct
-  include T
-
-  let to_yojson ((d, ps) : T.t) : Yojson.Safe.t =
+  let to_yojson ((d, ps) : Imandra_ptime.t) : Yojson.Safe.t =
     `List [ `Int (Z.to_int d); `Int (Z.to_int ps) ]
 
-  let of_yojson (j : Yojson.Safe.t) : (T.t, string) Result.t =
+  let of_yojson (j : Yojson.Safe.t) : (Imandra_ptime.t, string) Result.t =
     match j with
     | `List [ `Int d; `Int ps ] -> Ok (Z.of_int d, Z.of_int ps)
     | _ -> Error "Invalid"
 
   module Span = struct
-    include T.Span
+    include Imandra_ptime.Span
 
     let to_yojson ((a, b) : Span.t) : Yojson.Safe.t =
       `List [ `Int (Z.to_int a); `Int (Z.to_int b) ]
@@ -27,6 +24,8 @@ module Imandra_ptime_ED = struct
       | _ -> Error "Expected a list"
   end
 end
+
+module T = Imandra_ptime
 
 module Q = struct
   include Q
@@ -52,8 +51,8 @@ module Z = struct
     | _ -> Error "Expected an int"
 end
 
-module Imandra_ptime_extra_ED = struct
-  include TE
+module Imandra_ptime_extra = struct
+  include Imandra_ptime_extra
 
   let week_to_yojson = function
     | Week_1 -> `String "Week_1"
@@ -74,6 +73,7 @@ module Imandra_ptime_extra_ED = struct
     | _ -> Error "expected a string"
 end
 
+module TE = Imandra_ptime_extra
 module D = Decoders_yojson.Basic.Decode
 open Itr_ast_legacy_decoders
 
@@ -202,14 +202,12 @@ type coll_type =
 [@@deriving eq, yojson]
 
 type datetime =
-  | UTCTimestamp of Imandra_ptime_ED.t
-  | UTCTimeOnly of Imandra_ptime_ED.t
-  | UTCDateOnly of Imandra_ptime_ED.t
-  | LocalMktDate of Imandra_ptime_ED.t
-  | MonthYear of
-      Imandra_ptime_ED.t
-      * (Imandra_ptime_extra_ED.week[@equal fun a b -> a = b]) option
-  | Duration of Imandra_ptime_ED.Span.t [@to_yojson span_to_yojson]
+  | UTCTimestamp of T.t
+  | UTCTimeOnly of T.t
+  | UTCDateOnly of T.t
+  | LocalMktDate of T.t
+  | MonthYear of T.t * (TE.week[@equal fun a b -> a = b]) option
+  | Duration of T.Span.t [@to_yojson span_to_yojson]
 [@@deriving eq, yojson]
 
 type literal =
