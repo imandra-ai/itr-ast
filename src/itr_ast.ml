@@ -632,6 +632,7 @@ type instruction =
              E.g. "Expecting a NewOrderSingle with the following constraints:" 
           *)
     }
+[@@deriving yojson]
 
 module Instructions_set = CCSet.Make (struct
   type t = instruction list
