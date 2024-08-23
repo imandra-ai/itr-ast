@@ -297,7 +297,23 @@ and record = {
           |> List.map (fun (s, ri) ->
                  `Tuple [ `String s; record_item_to_yojson ri ])
           |> fun items -> `List items]
-      [@of_yojson fun _x -> Ok String_map.empty]
+      [@of_yojson
+        fun j ->
+          let open CCResult in
+          let handle_element j : (string * record_item, string) Result.t =
+            let open CCResult.Infix in
+            match j with
+            | `Tuple [ `String s; ri ] ->
+              let+ ri_yojson = record_item_of_yojson ri in
+              s, ri_yojson
+            | _ -> Error "One element isn't a pair (string,record_item)"
+          in
+          match j with
+          | `List ls ->
+            let open CCResult.Infix in
+            let+ assoc = map_l handle_element ls in
+            String_map.of_list assoc
+          | _ -> Error "Expected a list"]
       (* TODO: Fix *)
 }
 
