@@ -10,7 +10,7 @@ let pp_bullet_list pp1 pp2 =
     vbox
       (list
          (fun fmt (x, y) ->
-           fprintf fmt "%a: - %a" (hvbox ~i:2 pp1) x (hvbox ~i:2 pp2) y)
+           fprintf fmt "%a: %a" (hvbox ~i:2 pp1) x (hvbox ~i:2 pp2) y)
          ~sep:(return "@,")))
 
 let s_count_in_day = 86_400
