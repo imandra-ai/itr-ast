@@ -1,6 +1,82 @@
 module T = Imandra_ptime
 module TE = Imandra_ptime_extra
 
+module Imandra_ptime_ED = struct
+  include T
+
+  let to_yojson ((d, ps) : T.t) : Yojson.Safe.t =
+    `List [ `Int (Z.to_int d); `Int (Z.to_int ps) ]
+
+  let of_yojson (j : Yojson.Safe.t) : (T.t, string) Result.t =
+    match j with
+    | `List [ `Int d; `Int ps ] -> Ok (Z.of_int d, Z.of_int ps)
+    | _ -> Error "Invalid"
+
+  module Span = struct
+    include T.Span
+
+    let to_yojson ((a, b) : Span.t) : Yojson.Safe.t =
+      `List [ `Int (Z.to_int a); `Int (Z.to_int b) ]
+
+    let of_yojson (j : Yojson.Safe.t) : (Span.t, string) Result.t =
+      let open Result in
+      match j with
+      | `List [ `Int d; `Int ps ] -> Ok (Z.of_int d, Z.of_int ps)
+      | `List [ _; _ ] -> Error "At least one argument is not an int"
+      | `List _ -> Error "List doesn't contain two arguments"
+      | _ -> Error "Expected a list"
+  end
+end
+
+module Q = struct
+  include Q
+
+  let to_yojson ({ num; den } : Q.t) : Yojson.Safe.t =
+    `Assoc [ "num", `Int (Z.to_int num); "den", `Int (Z.to_int den) ]
+
+  let of_yojson (j : Yojson.Safe.t) : (Q.t, string) Result.t =
+    let open Result in
+    match j with
+    | `Assoc [ ("num", `Int num); ("den", `Int den) ] -> Ok (Q.of_ints num den)
+    | _ -> Error "Invalid"
+end
+
+module Z = struct
+  include Z
+
+  let to_yojson (z : Z.t) : Yojson.Safe.t = `Int (Z.to_int z)
+
+  let of_yojson (j : Yojson.Safe.t) : (Z.t, string) Result.t =
+    match j with
+    | `Int z -> Ok (Z.of_int z)
+    | _ -> Error "Expected an int"
+end
+
+module Imandra_ptime_extra_ED = struct
+  include TE
+
+  let week_to_yojson = function
+    | Week_1 -> `String "Week_1"
+    | Week_2 -> `String "Week_2"
+    | Week_3 -> `String "Week_3"
+    | Week_4 -> `String "Week_4"
+    | Week_5 -> `String "Week_5"
+
+  let week_of_yojson =
+    let open Result in
+    function
+    | `String "Week_1" -> Ok Week_1
+    | `String "Week_2" -> Ok Week_2
+    | `String "Week_3" -> Ok Week_3
+    | `String "Week_4" -> Ok Week_4
+    | `String "Week_5" -> Ok Week_5
+    | `String _ -> Error "Invalid string"
+    | _ -> Error "expected a string"
+end
+
+module D = Decoders_yojson.Basic.Decode
+open Itr_ast_legacy_decoders
+
 module Map_extra (M : CCMap.S) = struct
   include M
 
@@ -13,37 +89,70 @@ module Map_extra (M : CCMap.S) = struct
   let merge_all_keep_left = function
     | [] -> empty
     | m :: ms -> CCList.fold_left merge_keep_left m ms
+
+  (* let to_yojson m = bindings m |> [%to_yojson: (key * t) list] *)
 end
 
 module String_map = Map_extra (CCMap.Make (CCString))
 module String_set = CCSet.Make (CCString)
 
-type field_path = (string * Z.t option) list [@@deriving eq]
+type field_path = (string * Z.t option) list [@@deriving eq, yojson]
 
 module Field_path_set = CCSet.Make (struct
-  type t = field_path
+  type t = field_path [@@deriving yojson]
 
   let compare = compare
 end)
 
 let pp_string fmt s = CCFormat.(fprintf fmt "%S" s)
 
+let span_decoder : Imandra_ptime.span D.decoder =
+  let open D in
+  one_of
+    [
+      ( "string as int decoder",
+        D.list string >>= function
+        | [ d; ps ] ->
+          (match Imandra_ptime.Span.of_d_ps (Z.of_string d, Z.of_string ps) with
+          | Some s -> D.succeed s
+          | None -> D.fail "invalid time span")
+        | _ -> D.fail "expected [d, ps]" );
+      ( "int decoder",
+        D.list int_decoder >>= function
+        | [ d; ps ] ->
+          (match Imandra_ptime.Span.of_d_ps (d, ps) with
+          | Some s -> D.succeed s
+          | None -> D.fail "invalid time span")
+        | _ -> D.fail "expected [d, ps]" );
+    ]
+
+let ptime_decoder : Imandra_ptime.t D.decoder =
+  let open D in
+  one_of
+    [
+      ( "span_decoder",
+        span_decoder >>= fun s ->
+        match Imandra_ptime.of_span s with
+        | Some t -> succeed t
+        | None -> fail "invalid timestamp" );
+    ]
+
 module Message_value = struct
   type t = {
     var: string option;
     field_path: field_path;
   }
-  [@@deriving eq]
+  [@@deriving eq, yojson]
 
   let mk ~var field_path = { var; field_path }
 
-  let to_json t : Yojson.Basic.t =
-    let pre : Yojson.Basic.t =
+  let to_json t : Yojson.Safe.t =
+    let pre : Yojson.Safe.t =
       match t.var with
       | None -> `Null
       | Some v -> `String v
     in
-    let post : string * Yojson.Basic.t =
+    let post : string * Yojson.Safe.t =
       ( "field_path",
         `List
           (List.map
@@ -84,22 +193,24 @@ type hof_type =
   | Find
   | For_all2
   | Map2
-[@@deriving eq]
+[@@deriving eq, yojson]
 
 type coll_type =
   | Set
   | List
   | Tuple
-[@@deriving eq]
+[@@deriving eq, yojson]
 
 type datetime =
-  | UTCTimestamp of T.t
-  | UTCTimeOnly of T.t
-  | UTCDateOnly of T.t
-  | LocalMktDate of T.t
-  | MonthYear of T.t * (TE.week[@equal fun a b -> a = b]) option
-  | Duration of T.Span.t
-[@@deriving eq]
+  | UTCTimestamp of Imandra_ptime_ED.t
+  | UTCTimeOnly of Imandra_ptime_ED.t
+  | UTCDateOnly of Imandra_ptime_ED.t
+  | LocalMktDate of Imandra_ptime_ED.t
+  | MonthYear of
+      Imandra_ptime_ED.t
+      * (Imandra_ptime_extra_ED.week[@equal fun a b -> a = b]) option
+  | Duration of Imandra_ptime_ED.Span.t [@to_yojson span_to_yojson]
+[@@deriving eq, yojson]
 
 type literal =
   | Bool of bool
@@ -180,6 +291,14 @@ and expr =
 and record = {
   name: string;
   elements: record_item String_map.t;
+      [@to_yojson
+        fun elements ->
+          elements |> String_map.bindings
+          |> List.map (fun (s, ri) ->
+                 `Tuple [ `String s; record_item_to_yojson ri ])
+          |> fun items -> `List items]
+      [@of_yojson fun _x -> Ok String_map.empty]
+      (* TODO: Fix *)
 }
 
 and record_item =
@@ -191,7 +310,7 @@ and record_item =
       num_in_group_field: string;
       elements: record list;
     }
-[@@deriving eq]
+[@@deriving eq, yojson]
 
 let equal_record_item lhs rhs =
   match lhs, rhs with
@@ -586,11 +705,13 @@ type expecting = {
   qe_modified_exprs: expr list;
   common_exprs: expr list;
 }
+[@@deriving yojson]
 
 type field = {
   name: string;
   value: record_item;
 }
+[@@deriving yojson]
 
 type instruction =
   | Action of {
@@ -635,13 +756,13 @@ type instruction =
 [@@deriving yojson]
 
 module Instructions_set = CCSet.Make (struct
-  type t = instruction list
+  type t = instruction list [@@deriving yojson]
 
   let compare = compare
 end)
 
 module Value = struct
-  type t = value
+  type t = value [@@deriving yojson]
 
   let rec exists f v =
     f v

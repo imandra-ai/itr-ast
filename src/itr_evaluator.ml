@@ -51,7 +51,7 @@ let msg_or_expr_pp (ppf : Format.formatter) : 'a msg_or_expr -> unit =
 let failing_msg expr =
   let open CCFormat in
   fprintf str_formatter "%s"
-    (Yojson.Basic.to_string @@ Itr_ast_json_pp.record_item_to_json expr);
+    (Yojson.Safe.to_string @@ Itr_ast_json_pp.record_item_to_json expr);
   flush_str_formatter ()
 
 let failing_pretty_msg expr =
