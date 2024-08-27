@@ -632,6 +632,9 @@ type instruction =
              E.g. "Expecting a NewOrderSingle with the following constraints:" 
           *)
     }
+  | Comment of string
+      (** A comment which has no effect on the computation.
+          Only used to render user-friendly info in the front-end.  *)
 
 module Instructions_set = CCSet.Make (struct
   type t = instruction list
