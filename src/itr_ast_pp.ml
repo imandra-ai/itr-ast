@@ -222,9 +222,9 @@ let rec instruction_pp (ppf : formatter) : instruction -> unit =
   | Message _ -> ()
   | Set { prop; value } ->
     fprintf ppf "set %s = %a" prop record_item_pp_parens value
-  | Send { variable; tag; withs } ->
-    fprintf ppf "@[<v>send %a(%s) %a@]" pp_var_eq_opt variable tag
-      (CCFormat.some record_pp) withs
+  | Send { variable; tag; withs; description } ->
+    fprintf ppf "@[<v>send %a(%s) %a : %a@]" pp_var_eq_opt variable tag
+      (CCFormat.some record_pp) withs CCFormat.(opt string) description
   | Prompt { prop; and_set } ->
     fprintf ppf "@[<v>prompt %s %s@]"
       (if and_set then
@@ -245,6 +245,8 @@ let rec instruction_pp (ppf : formatter) : instruction -> unit =
       where
       (pp_expecting_opt expecting_pp)
       expecting
+  | Comment comment ->
+     fprintf ppf "@[<v 2>comment %s@]" comment
 
 and expecting_pp fmt (expecting : expecting) =
   let open CCFormat in

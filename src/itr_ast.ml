@@ -702,7 +702,7 @@ module Value = struct
       CCList.exists (exists_record_item f) (List.map (fun x -> x.value) fields)
     | Message { fields; _ } ->
       CCList.exists (exists_record_item f) (List.map (fun x -> x.value) fields)
-    | Send { variable = _; withs = record; tag = _ } ->
+    | Send { variable = _; withs = record; tag = _; description = _ } ->
       CCOption.exists (exists_record f) record
     | Receive { variable = _; where; expecting; _ } ->
       exists_expr f where
@@ -713,6 +713,7 @@ module Value = struct
                @ List.map fst e.nullable_exprs))
            expecting
     | Prompt _ -> false
+    | Comment _ -> false
 end
 
 let is_local_message_value = function
