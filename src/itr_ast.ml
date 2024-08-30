@@ -613,13 +613,28 @@ type instruction =
       variable: string option;
       tag: string;
       withs: record option;
+      description: string option;
+          (** Optionally provide a human-readable string of the expected send.  
+             If None, it will have no effect. If Some s, it will alter the display in the UI.
+
+             E.g. "Sending QuoteRequest: "
+          *)
     }
   | Receive of {
       variable: string option;
       where: expr;
       expecting: expecting option;
       example: record;
+      description: string option;
+          (** Optionally provide a human-readable string of the expected receive.  
+             If None, it will have no effect. If Some s, it will alter the display in the UI.
+
+             E.g. "Expecting a NewOrderSingle with the following constraints:" 
+          *)
     }
+  | Comment of string
+      (** A comment which has no effect on the computation.
+          Only used to render user-friendly info in the front-end.  *)
 
 module Instructions_set = CCSet.Make (struct
   type t = instruction list
@@ -687,7 +702,7 @@ module Value = struct
       CCList.exists (exists_record_item f) (List.map (fun x -> x.value) fields)
     | Message { fields; _ } ->
       CCList.exists (exists_record_item f) (List.map (fun x -> x.value) fields)
-    | Send { variable = _; withs = record; tag = _ } ->
+    | Send { variable = _; withs = record; tag = _; description = _ } ->
       CCOption.exists (exists_record f) record
     | Receive { variable = _; where; expecting; _ } ->
       exists_expr f where
@@ -698,6 +713,7 @@ module Value = struct
                @ List.map fst e.nullable_exprs))
            expecting
     | Prompt _ -> false
+    | Comment _ -> false
 end
 
 let is_local_message_value = function
@@ -708,10 +724,11 @@ let set prop value = Set { prop; value }
 
 let not' e = Not e
 
-let send ?variable ~tag ?values () = Send { variable; withs = values; tag }
+let send ?variable ~tag ?values ?description () =
+  Send { variable; withs = values; tag; description }
 
 let expecting relevant_exprs common_exprs qe_modified_exprs nullable_exprs =
   { relevant_exprs; common_exprs; qe_modified_exprs; nullable_exprs }
 
-let receive ?variable ~where ?expecting ~example () =
-  Receive { variable; where; expecting; example }
+let receive ?variable ~where ?expecting ~example ?description () =
+  Receive { variable; where; expecting; example; description }

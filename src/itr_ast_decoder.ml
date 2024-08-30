@@ -468,13 +468,15 @@ let instruction_decoder () : I.instruction D.decoder =
           ]
       in
       let* withs = field "withs" (nullable (record_decoder ())) in
-      succeed (I.Send { variable; tag; withs })
+      let* description = field_opt "description" string in
+      succeed (I.Send { variable; tag; withs; description })
     | "Receive" ->
       let* variable = field "variable" (nullable string) in
       let* where = field "where" (expr_decoder ()) in
       let* expecting = field "expecting" (nullable expecting_decoder) in
+      let* description = field_opt "description" string in
       let+ example = field "example" (record_decoder ()) in
-      I.Receive { variable; where; expecting; example }
+      I.Receive { variable; where; expecting; example; description }
     | "Prompt" ->
       let* prop = field "prop" string in
       let+ and_set = field "and_set" bool in
@@ -484,4 +486,7 @@ let instruction_decoder () : I.instruction D.decoder =
       let* prop = field "variable" string in
       let+ value = field "call" (value_decoder ()) in
       I.Set { prop; value = Rec_value (Value value) }
+    | "Comment" ->
+       let+ comment = field "message" string in
+       I.Comment comment
     | _ -> fail "unrecognised instruction")

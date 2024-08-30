@@ -269,7 +269,7 @@ let rec instruction_to_json : instruction -> t = function
   | Prompt { prop; and_set } ->
     `Assoc
       [ "Prompt", `Assoc [ "prop", `String prop; "and_set", `Bool and_set ] ]
-  | Send { variable; tag; withs } ->
+  | Send { variable; tag; withs; description } ->
     `Assoc
       [
         ( "Send",
@@ -284,9 +284,13 @@ let rec instruction_to_json : instruction -> t = function
                 match withs with
                 | None -> `Null
                 | Some withs -> record_to_json withs );
+              ( "description",
+                match description with
+                | Some d -> `String d
+                | None -> `Null );
             ] );
       ]
-  | Receive { variable; where; expecting; example } ->
+  | Receive { variable; where; expecting; example; description } ->
     `Assoc
       [
         ( "Receive",
@@ -302,8 +306,14 @@ let rec instruction_to_json : instruction -> t = function
                 | None -> `Null
                 | Some e -> expecting_to_json e );
               "example", record_to_json example;
+              ( "description",
+                match description with
+                | Some d -> `String d
+                | None -> `Null );
             ] );
       ]
+  | Comment comment ->
+    `Assoc [ "Comment", `Assoc [ "message", `String comment ] ]
 
 and expecting_to_json (expecting : expecting) =
   `Assoc
