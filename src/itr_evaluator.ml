@@ -895,6 +895,23 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
           Rec_value (And { lhs = condition; rhs = value })
         | _ -> simplified_input )
     | Error (`GotResult ri) -> ri)
+   | Value
+       (ObjectProperty
+         {
+           obj = Rec_value (Value (Variable v));
+           index : Z.t option;
+           prop : string;
+         }) ->
+     (match context.static_context with
+     | None -> Rec_value e
+     | Some context ->
+       (
+       let field_path = [prop,index] in
+       match String_map.get v context.local_vars with
+       | Some (Msg { msg; _ }) ->
+         evaluate_record_item (context.get_field msg field_path)
+       | Some (Record_item ri) -> evaluate_record_item ri
+       | _ -> Rec_value e)) 
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
