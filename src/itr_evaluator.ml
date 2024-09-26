@@ -907,12 +907,12 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | Some context ->
       let field_path = [ prop, index ] in
       (match String_map.get v context.local_vars with
-      | Some event -> evaluate_record_item (context.get_field event field_path)
+      | Some event -> context.get_field event field_path
       | _ -> Rec_value e))
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
-    (match (* evaluate_record_item *) obj with
+    (match evaluate_record_item obj with
     | Rec_record { elements; _ } as r ->
       (match index with
       | None ->
