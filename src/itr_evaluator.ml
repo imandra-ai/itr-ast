@@ -912,7 +912,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
-    (match evaluate_record_item obj with
+    (match (* evaluate_record_item *) obj with
     | Rec_record { elements; _ } as r ->
       (match index with
       | None ->
