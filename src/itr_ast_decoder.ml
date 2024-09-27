@@ -487,6 +487,6 @@ let instruction_decoder () : I.instruction D.decoder =
       let+ value = field "call" (value_decoder ()) in
       I.Set { prop; value = Rec_value (Value value) }
     | "Comment" ->
-       let+ comment = field "message" string in
-       I.Comment comment
+      let+ comment = field "message" string in
+      I.Comment comment
     | _ -> fail "unrecognised instruction")
