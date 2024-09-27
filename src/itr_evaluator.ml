@@ -29,7 +29,7 @@ end)
 type 'a static_context = {
   local_vars: 'a msg_or_expr String_map.t;
   implicit_message: 'a msg option;
-  get_field: 'a -> field_path -> record_item;
+  get_field: 'a msg_or_expr -> field_path -> record_item;
 }
 
 type field_presence_map = field_presence Field_path_map.t
@@ -896,6 +896,20 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         | _ -> simplified_input )
     | Error (`GotResult ri) -> ri)
   | Value
+      (ObjectProperty
+        {
+          obj = Rec_value (Value (Variable v));
+          index : Z.t option;
+          prop : string;
+        }) ->
+    (match context.static_context with
+    | None -> Rec_value e
+    | Some context ->
+      let field_path = [ prop, index ] in
+      (match String_map.get v context.local_vars with
+      | Some event -> context.get_field event field_path
+      | _ -> Rec_value e))
+  | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
     ->
     (match evaluate_record_item obj with
@@ -1339,12 +1353,11 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match var, context.implicit_message with
       | Some x, _ ->
         (match String_map.get x context.local_vars with
-        | Some (Msg { msg; _ }) ->
-          evaluate_record_item (context.get_field msg field_path)
-        | Some (Record_item ri) -> evaluate_record_item ri
+        | Some event ->
+          evaluate_record_item (context.get_field event field_path)
         | _ -> Rec_value e)
-      | None, Some { msg; _ } ->
-        evaluate_record_item (context.get_field msg field_path)
+      | None, Some event ->
+        evaluate_record_item (context.get_field (Msg event) field_path)
       | None, None -> Rec_value e))
   | Value
       (Funcall

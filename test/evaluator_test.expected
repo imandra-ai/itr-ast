@@ -10,6 +10,11 @@ Result evaluated and used when there's a fallback default:
   input: defaultIfNotSet(field_two,field_one)
   context: field_one -> "field_one", field_two -> "field_two"
   result: field_one 
+Result evaluated with a variable with self reference: 
+  input: $event_1.var_field_1 = 1
+  local vars: event_1,{ var_field_1 = $event_1.var_field_2;
+                        var_field_2 = 1;}
+  result: true 
 Result evaluated from equality to field path to: 
   input: None = field_two
   context: empty
