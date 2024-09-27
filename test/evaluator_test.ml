@@ -185,7 +185,7 @@ let () =
     ]
   in
   let ctx = context msg local_vars in
-  let result = Itr_evaluator.evaluate_record_item ctx item in
+  let result = Itr_evaluator.fix_evaluate_record_item ctx item in
   CCFormat.printf
     "@[<v 2>Result evaluated with a variable with self reference: @ @[input: \
      %a@]@ @[local vars: %a@]@ @[result: %a@] @]@."
