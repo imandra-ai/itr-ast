@@ -907,7 +907,14 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     | Some context ->
       let field_path = [ prop, index ] in
       (match String_map.get v context.local_vars with
-      | Some event -> context.get_field event field_path
+      | Some event ->
+        (match event with
+        (* if this event you get from this var is a message value or another var *)
+        (* then keep going *)
+        | Record_item (Rec_value (Value (Variable _)) as obj)
+        | Record_item (Rec_value (Value (MessageValue _)) as obj) ->
+          evaluate_expr (Value (ObjectProperty { obj; index; prop }))
+        | _ -> context.get_field event field_path)
       | _ -> Rec_value e))
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
@@ -1353,11 +1360,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match var, context.implicit_message with
       | Some x, _ ->
         (match String_map.get x context.local_vars with
-        | Some event ->
-          evaluate_record_item (context.get_field event field_path)
+        | Some event -> context.get_field event field_path
         | _ -> Rec_value e)
-      | None, Some event ->
-        evaluate_record_item (context.get_field (Msg event) field_path)
+      | None, Some event -> context.get_field (Msg event) field_path
       | None, None -> Rec_value e))
   | Value
       (Funcall
