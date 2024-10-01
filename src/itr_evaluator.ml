@@ -851,6 +851,11 @@ let rec evaluate_record_item (context : 'a context) (e : record_item) :
       }
 
 and evaluate_expr (context : 'a context) (e : expr) : record_item =
+  (* when recursing here we do not by default evaluate to a fixed point because  *)
+  (* we want to non-eagerly evaluate message values and action values where we   *)
+  (* use the get_field function from the context. However we do fix evaluate     *)
+  (* before checking is ground. This is ok as the fix evaluation happens outside *)
+  (* the evaluation of the get_field function.                                   *)
   let evaluate_expr = evaluate_expr context in
   let evaluate_record_item = evaluate_record_item context in
   match e with
@@ -1016,8 +1021,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
     let rhs = a in
     evaluate_expr (Eq { lhs; rhs })
   | Eq { lhs : record_item; rhs : record_item } ->
-    let lhs = evaluate_record_item lhs in
-    let rhs = evaluate_record_item rhs in
+    let lhs = fix_evaluate_record_item context lhs in
+    let rhs = fix_evaluate_record_item context rhs in
     if Itr_ast.equal_record_item lhs rhs then
       e_true
     else if
@@ -1178,7 +1183,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | Some Present ->
         Rec_value (Value (MessageValue { var = None; field_path }))
       | _ ->
-        let a = evaluate_expr a in
+        let a = fix_evaluate_record_item context (Rec_value a) in
         (match a with
         | Rec_value (Value (Literal LiteralNone)) -> evaluate_record_item d
         | _ ->
@@ -1196,7 +1201,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         Rec_value
           (Value (Funcall { func; args = CCList.map evaluate_record_item args })))
     | [ d; a ] ->
-      let a = evaluate_record_item a in
+      let a = fix_evaluate_record_item context a in
       (match a with
       | Rec_value (Value (Literal LiteralNone)) -> evaluate_record_item d
       | _ ->
@@ -1708,8 +1713,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
   | In { el : expr; set : value } ->
     (match evaluate_expr (Value set) with
     | Rec_value (Value (Literal (Coll (_, es)))) ->
-      let el = evaluate_expr el in
-      if List.mem el (List.map evaluate_record_item es) then
+      let el = fix_evaluate_record_item context (Rec_value el) in
+      if List.mem el (List.map (fix_evaluate_record_item context) es) then
         e_true
       else if is_ground el && List.for_all is_ground es then
         e_false
@@ -1777,7 +1782,7 @@ let get_all_subsets (l : 'a list) : 'a list list =
 
 let rec infer_field_presence (context : 'a context) (e : expr) : field_path list
     =
-  let evaluate_record_item = evaluate_record_item context in
+  let evaluate_record_item = fix_evaluate_record_item context in
   let evaluate_expr = evaluate_expr context in
   match e with
   | Cmp

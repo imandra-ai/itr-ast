@@ -19,3 +19,7 @@ Result evaluated from equality to field path to:
   input: None = field_two
   context: empty
   result: None = field_two 
+Result evaluated from equality of FIX contextual terms: 
+  input: Some "1" = "1"
+  context: empty
+  result: true 
