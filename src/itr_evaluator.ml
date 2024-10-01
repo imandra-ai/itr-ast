@@ -851,6 +851,11 @@ let rec evaluate_record_item (context : 'a context) (e : record_item) :
       }
 
 and evaluate_expr (context : 'a context) (e : expr) : record_item =
+  (* when recursing here we do not by default evaluate to a fixed point because  *)
+  (* we want to non-eagerly evaluate message values and action values where we   *)
+  (* use the get_field function from the context. However we do fix evaluate     *)
+  (* before checking is ground. This is ok as the fix evaluation happens outside *)
+  (* the evaluation of the get_field function.                                   *)
   let evaluate_expr = evaluate_expr context in
   let evaluate_record_item = evaluate_record_item context in
   match e with
@@ -914,9 +919,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
         | Record_item (Rec_value (Value (Variable _)) as obj)
         | Record_item (Rec_value (Value (MessageValue _)) as obj) ->
           evaluate_expr (Value (ObjectProperty { obj; index; prop }))
-        | _ -> let ans = context.get_field event field_path in
-
-               ans)
+        | _ -> context.get_field event field_path)
       | _ -> Rec_value e))
   | Value
       (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
@@ -1362,13 +1365,9 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       (match var, context.implicit_message with
       | Some x, _ ->
         (match String_map.get x context.local_vars with
-        | Some event ->
-          let ans = context.get_field event field_path in
-          ans
+        | Some event -> context.get_field event field_path
         | _ -> Rec_value e)
-      | None, Some event ->
-        let ans = context.get_field (Msg event) field_path in
-        ans
+      | None, Some event -> context.get_field (Msg event) field_path
       | None, None -> Rec_value e))
   | Value
       (Funcall

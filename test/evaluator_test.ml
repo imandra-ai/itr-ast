@@ -209,3 +209,22 @@ let () =
     "@[<v 2>Result evaluated from equality to field path to: @ @[input: %a@]@ \
      @[context: empty@]@ @[result: %a@] @]@."
     Itr_ast_pp.expr_pp item Itr_ast_pp.record_item_pp result
+
+let () =
+  let item =
+    Itr_ast.(
+      Eq
+        {
+          lhs =
+            Rec_value
+              (Value
+                 (Literal
+                    (LiteralSome (Rec_value (Value (Literal (String "1")))))));
+          rhs = Rec_value (Value (Literal (String "1")));
+        })
+  in
+  let result = Itr_evaluator.evaluate_expr Itr_evaluator.empty_context item in
+  CCFormat.printf
+    "@[<v 2>Result evaluated from equality of FIX contextual terms: @ @[input: %a@]@ \
+     @[context: empty@]@ @[result: %a@] @]@."
+    Itr_ast_pp.expr_pp item Itr_ast_pp.record_item_pp result
