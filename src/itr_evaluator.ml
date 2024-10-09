@@ -63,99 +63,77 @@ let convert_to_dateonly (ts : T.t) : T.t =
   let d, _ps = ts |> T.to_span |> T.Span.to_d_ps in
   T.unsafe_of_d_ps (d, Z.zero)
 
-let rec replace_expr_in_expr e e_check e_replace =
+let rec replace_record_item_in_value (e : value) (e_check : record_item)
+    (e_replace : record_item) =
+  match e with
+  | Funcall { func : value; args : record_item list } ->
+    Funcall
+      {
+        func = replace_record_item_in_value func e_check e_replace;
+        args =
+          List.map
+            (fun arg ->
+              replace_record_item_in_record_item arg e_check e_replace)
+            args;
+      }
+  | CaseSplit
+      { default_value : record_item; cases : (record_item * record_item) list }
+    ->
+    CaseSplit
+      {
+        default_value =
+          replace_record_item_in_record_item default_value e_check e_replace;
+        cases =
+          CCList.map
+            (fun (c, s) ->
+              ( replace_record_item_in_record_item c e_check e_replace,
+                replace_record_item_in_record_item s e_check e_replace ))
+            cases;
+      }
+  | ObjectProperty { obj : record_item; index : Z.t option; prop : string } ->
+    ObjectProperty
+      {
+        obj = replace_record_item_in_record_item obj e_check e_replace;
+        index;
+        prop;
+      }
+  | Literal (Coll (ct, ri)) ->
+    Literal
+      (Coll
+         ( ct,
+           CCList.map
+             (fun x -> replace_record_item_in_record_item x e_check e_replace)
+             ri ))
+  | Literal (MapColl (def, ris)) ->
+    Literal
+      (MapColl
+         ( replace_record_item_in_record_item def e_check e_replace,
+           CCList.map
+             (fun (c, s) ->
+               ( replace_record_item_in_record_item c e_check e_replace,
+                 replace_record_item_in_record_item s e_check e_replace ))
+             ris ))
+  | Literal (LiteralSome ri) ->
+    Literal
+      (LiteralSome (replace_record_item_in_record_item ri e_check e_replace))
+  | Hof { hof_type : hof_type; lambda_args : value list; body : record_item } ->
+    Hof
+      {
+        hof_type;
+        lambda_args;
+        body = replace_record_item_in_record_item body e_check e_replace;
+      }
+  | e -> e
+
+and replace_expr_in_expr e e_check e_replace =
   if e = e_check then
     e_replace
   else (
     match e with
-    | Value (Funcall { func : value; args : record_item list }) ->
+    | Value e ->
       Value
-        (Funcall
-           {
-             func;
-             args =
-               List.map
-                 (fun arg ->
-                   replace_record_item_in_record_item arg (Rec_value e_check)
-                     (Rec_value e_replace))
-                 args;
-           })
-    | Value
-        (CaseSplit
-          {
-            default_value : record_item;
-            cases : (record_item * record_item) list;
-          }) ->
-      Value
-        (CaseSplit
-           {
-             default_value =
-               replace_record_item_in_record_item default_value
-                 (Rec_value e_check) (Rec_value e_replace);
-             cases =
-               CCList.map
-                 (fun (c, s) ->
-                   ( replace_record_item_in_record_item c (Rec_value e_check)
-                       (Rec_value e_replace),
-                     replace_record_item_in_record_item s (Rec_value e_check)
-                       (Rec_value e_replace) ))
-                 cases;
-           })
-    | Value
-        (ObjectProperty
-          { obj : record_item; index : Z.t option; prop : string }) ->
-      Value
-        (ObjectProperty
-           {
-             obj =
-               replace_record_item_in_record_item obj (Rec_value e_check)
-                 (Rec_value e_replace);
-             index;
-             prop;
-           })
-    | Value (Literal (Coll (ct, ri))) ->
-      Value
-        (Literal
-           (Coll
-              ( ct,
-                CCList.map
-                  (fun x ->
-                    replace_record_item_in_record_item x (Rec_value e_check)
-                      (Rec_value e_replace))
-                  ri )))
-    | Value (Literal (MapColl (def, ris))) ->
-      Value
-        (Literal
-           (MapColl
-              ( replace_record_item_in_record_item def (Rec_value e_check)
-                  (Rec_value e_replace),
-                CCList.map
-                  (fun (c, s) ->
-                    ( replace_record_item_in_record_item c (Rec_value e_check)
-                        (Rec_value e_replace),
-                      replace_record_item_in_record_item s (Rec_value e_check)
-                        (Rec_value e_replace) ))
-                  ris )))
-    | Value (Literal (LiteralSome ri)) ->
-      Value
-        (Literal
-           (LiteralSome
-              (replace_record_item_in_record_item ri (Rec_value e_check)
-                 (Rec_value e_replace))))
-    | Value
-        (Hof
-          { hof_type : hof_type; lambda_args : value list; body : record_item })
-      ->
-      Value
-        (Hof
-           {
-             hof_type;
-             lambda_args;
-             body =
-               replace_record_item_in_record_item body (Rec_value e_check)
-                 (Rec_value e_replace);
-           })
-    | Value _ -> e
+        (replace_record_item_in_value e (Rec_value e_check)
+           (Rec_value e_replace))
     | Not expr -> Not (replace_expr_in_expr expr e_check e_replace)
     | Or { lhs : expr; rhs : expr } ->
       Or
@@ -201,24 +179,20 @@ let rec replace_expr_in_expr e e_check e_replace =
           rhs = replace_expr_in_expr rhs e_check e_replace;
         }
     | In { el : expr; set : value } ->
-      In { el = replace_expr_in_expr el e_check e_replace; set }
+      In
+        {
+          el = replace_expr_in_expr el e_check e_replace;
+          set =
+            replace_record_item_in_value set (Rec_value e_check)
+              (Rec_value e_replace);
+        }
   )
 
 and replace_record_item_in_expr (ri : expr) (e_check : record_item)
     (e_replace : record_item) =
   match ri with
-  | Value (Funcall { func : value; args : record_item list }) ->
-    Rec_value
-      (Value
-         (Funcall
-            {
-              func;
-              args =
-                List.map
-                  (fun arg ->
-                    replace_record_item_in_record_item arg e_check e_replace)
-                  args;
-            }))
+  | Value e ->
+    Rec_value (Value (replace_record_item_in_value e e_check e_replace))
   | Eq { lhs : record_item; rhs : record_item } ->
     Rec_value
       (Eq
@@ -226,76 +200,6 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
            lhs = replace_record_item_in_record_item lhs e_check e_replace;
            rhs = replace_record_item_in_record_item rhs e_check e_replace;
          })
-  | Value
-      (ObjectProperty { obj : record_item; index : Z.t option; prop : string })
-    ->
-    Rec_value
-      (Value
-         (ObjectProperty
-            {
-              obj = replace_record_item_in_record_item obj e_check e_replace;
-              index;
-              prop;
-            }))
-  | Value
-      (CaseSplit
-        {
-          default_value : record_item;
-          cases : (record_item * record_item) list;
-        }) ->
-    Rec_value
-      (Value
-         (CaseSplit
-            {
-              default_value =
-                replace_record_item_in_record_item default_value e_check
-                  e_replace;
-              cases =
-                CCList.map
-                  (fun (c, s) ->
-                    ( replace_record_item_in_record_item c e_check e_replace,
-                      replace_record_item_in_record_item s e_check e_replace ))
-                  cases;
-            }))
-  | Value
-      (Hof
-        { hof_type : hof_type; lambda_args : value list; body : record_item })
-    ->
-    Rec_value
-      (Value
-         (Hof
-            {
-              hof_type;
-              lambda_args;
-              body = replace_record_item_in_record_item body e_check e_replace;
-            }))
-  | Value (Literal (Coll (ct, ri))) ->
-    Rec_value
-      (Value
-         (Literal
-            (Coll
-               ( ct,
-                 CCList.map
-                   (fun x ->
-                     replace_record_item_in_record_item x e_check e_replace)
-                   ri ))))
-  | Value (Literal (MapColl (def, ris))) ->
-    Rec_value
-      (Value
-         (Literal
-            (MapColl
-               ( replace_record_item_in_record_item def e_check e_replace,
-                 CCList.map
-                   (fun (c, s) ->
-                     ( replace_record_item_in_record_item c e_check e_replace,
-                       replace_record_item_in_record_item s e_check e_replace ))
-                   ris ))))
-  | Value (Literal (LiteralSome ri)) ->
-    Rec_value
-      (Value
-         (Literal
-            (LiteralSome
-               (replace_record_item_in_record_item ri e_check e_replace))))
   | Not expr ->
     (match replace_record_item_in_expr expr e_check e_replace with
     | Rec_value expr -> Rec_value (Not expr)
@@ -339,11 +243,6 @@ and replace_record_item_in_expr (ri : expr) (e_check : record_item)
     (match replace_record_item_in_expr el e_check e_replace with
     | Rec_value el -> Rec_value (In { el; set })
     | _ -> Rec_value (In { el; set }))
-  | ri ->
-    (match e_check, e_replace with
-    | Rec_value e_check, Rec_value e_replace ->
-      Rec_value (replace_expr_in_expr ri e_check e_replace)
-    | _ -> Rec_value ri)
 
 and replace_expr_in_record_item ri (e_check : expr) (e_replace : expr) =
   match ri with
@@ -1397,10 +1296,8 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                    replace_record_item_in_record_item body
                      (Rec_value (Value (LambdaVariable e_check1))) e_replace1
                  in
-                 CCFormat.printf "REPL: %a\n" Itr_ast_pp.record_item_pp repl;
+
                  let repl = evaluate_record_item repl in
-                 CCFormat.printf "REPL SIMP: %a\n" Itr_ast_pp.record_item_pp
-                   repl;
 
                  let repl =
                    evaluate_record_item
@@ -1563,6 +1460,7 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                      (replace_record_item_in_record_item body
                         (Rec_value (Value (LambdaVariable e_check))) e_replace)
                  in
+
                  match repl with
                  | Rec_value lhs ->
                    (match evaluate_expr (And { lhs; rhs }) with
