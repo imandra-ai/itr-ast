@@ -507,6 +507,9 @@ let all = function
 let convert_timestamp_localmktdate date =
   funcall "timestamp_to_localmktdate" [ date ]
 
+let format_utctimeonly date =
+  funcall "FormatDate" [ date; Rec_value (string "HH:mm:ss.SSS") ]
+
 let format_utctimestamp date =
   funcall "FormatDate" [ date; Rec_value (string "yyyyMMdd-HH:mm:ss.SSS") ]
 
