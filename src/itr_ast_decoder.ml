@@ -83,7 +83,7 @@ let datetime_decoder : I.datetime D.decoder =
         [
           ( "ptime_decoder",
             let+ d = ptime_decoder in
-            I.UTCTimestamp d );
+            I.UTCTimeOnly d );
           ( "legacy_datetime",
             let+ d = utctimeonly_micro_decoder in
             I.UTCTimeOnly d );

@@ -1194,6 +1194,26 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "DayOf") ->
+    (match args with
+    | [ a ] ->
+      (match evaluate_record_item a with
+      | Rec_value (Value (Literal (Datetime (UTCTimestamp t)))) ->
+        Rec_value
+          (Value (Literal (Datetime (UTCDateOnly (convert_to_dateonly t)))))
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
+    when func = Literal (String "TimeOf") ->
+    (match args with
+    | [ a ] ->
+      (match evaluate_record_item a with
+      | Rec_value (Value (Literal (Datetime (UTCTimestamp t)))) ->
+        Rec_value
+          (Value (Literal (Datetime (UTCTimeOnly (convert_to_timeonly t)))))
+      | _ -> Rec_value e)
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "randInt") && List.length args = 2 ->
     (match args with
     | [ l; u ] ->
