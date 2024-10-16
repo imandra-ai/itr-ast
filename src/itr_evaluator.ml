@@ -63,6 +63,10 @@ let convert_to_dateonly (ts : T.t) : T.t =
   let d, _ps = ts |> T.to_span |> T.Span.to_d_ps in
   T.unsafe_of_d_ps (d, Z.zero)
 
+let convert_to_timeonly (ts : T.t) : T.t =
+  let _d, ps = ts |> T.to_span |> T.Span.to_d_ps in
+  T.unsafe_of_d_ps (Z.zero, ps)
+
 let rec replace_record_item_in_value (e : value) (e_check : record_item)
     (e_replace : record_item) =
   match e with
@@ -1147,6 +1151,20 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
       | _ -> Rec_value e)
     | [ date; Rec_value (Value (Literal (String "yyyyMMdd-HH:mm:ss.SSS"))) ] ->
       evaluate_record_item date
+    | [ date; Rec_value (Value (Literal (String "HH:mm:ss.SSS"))) ] ->
+      (match evaluate_record_item date with
+      | Rec_value (Value (Literal (Datetime (UTCTimestamp t)))) ->
+        Rec_value
+          (Value (Literal (Datetime (UTCTimeOnly (convert_to_timeonly t)))))
+      | Rec_value (Value (MessageValue mv)) ->
+        Rec_value
+          (Value
+             (Funcall
+                {
+                  func = Literal (String "TimeOf");
+                  args = [ Rec_value (Value (MessageValue mv)) ];
+                }))
+      | _ -> Rec_value e)
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
     when func = Literal (String "date") && args = [] ->
