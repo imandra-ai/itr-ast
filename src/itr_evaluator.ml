@@ -1136,6 +1136,22 @@ and evaluate_expr (context : 'a context) (e : expr) : record_item =
                (Funcall { func; args = CCList.map evaluate_record_item args })))
     | _ -> Rec_value e)
   | Value (Funcall { func : value; args : record_item list })
+    when (func = Literal (String "LString.append")
+         || func = Literal (String "String.append"))
+         && List.length args = 2 ->
+    (match args with
+    | [ l; r ] ->
+      let l = evaluate_record_item l in
+      let r = evaluate_record_item r in
+      (match l, r with
+      | ( Rec_value (Value (Literal (String l))),
+          Rec_value (Value (Literal (String r))) ) ->
+        Rec_value (Value (Literal (String (l ^ r))))
+      | l, r ->
+        Rec_value
+          (Value (Funcall { func : value; args : record_item list = [ l; r ] })))
+    | _ -> Rec_value e)
+  | Value (Funcall { func : value; args : record_item list })
     when (func = Literal (String "Set.subset")
          || func = Literal (String "subset"))
          && List.length args = 2 ->
